@@ -1,127 +1,65 @@
-# 📚 AI-Pop-Quiz: 实时课堂互动与注意力检测系统
+# 📚 基于DeepSeek的智能题库生成系统
+## 📋 项目概述
+```
+基于FastAPI构建的智能题库生成系统，支持双模引擎：
+- **本地模型**：部署DeepSeek-R1-Distill-Qwen-1.5B模型
+- **在线API**：通过系统环境变量配置API密钥
+- 核心功能：
+  - 文本文件上传自动生成选择题
+  - MongoDB题目存储与管理
+  - 提供FastAPI接口和网页界面
+   ```
 
-## 🔍 项目简介
-AI-Pop-Quiz 是一款用于**课堂、讲座、培训等知识分享场景**的实时互动工具，帮助演讲者检测听众注意力并加深学习效果。  
-通过 AI 自动生成基于讲课内容的选择题，实时推送到听众手机（网页 / 小程序），快速收集反馈，支持课堂即兴讨论，形成多维度统计分析报告。
+## 🛠️ 安装指南
 
----
-
-## 🚀 项目亮点
-- 🎯 **AI 自动出题**：基于 PPT、PDF、音频、视频内容，AI 生成多样化 quiz，避免传统手动编题的高成本。
-- ⏱ **即时反馈**：每 10 分钟进行一次 pop-quiz，听众 10 秒内答题后继续听课。
-- 📊 **精准统计**：实时展示答题正确率、排名、互动数据，帮助演讲者和组织者分析讲课效果。
-- 💬 **轻松互动**：每道题可展开即时讨论，听众能留言提出不同看法。
-- 🔒 **数据隐私友好**：可匿名答题和反馈，增强体验。
-- 🏆 **游戏化激励**：通过昵称、徽章收集等设计提升趣味性与长期使用。
-
----
-
-## ✨ 使用场景
-- 👨‍🏫 大学课堂教学
-- 🎤 各类培训、企业内训
-- 📝 公开讲座 / 大咖分享
-- 🚀 任何需要检验知识传递效果的现场场景
-
----
-
-## 🖼 系统架构概览
-
-
-输入收集（多模态） -> 数据库 -> AI 出题引擎 -> Quiz 推送 & 答题 ->
-答题统计 & 可视化 -> 即时讨论 & 报告 -> 持续优化
-
-
-
----
-
-## ⚙ 功能模块
-### 输入收集
-- 📄 读取文本、PPT、PDF 文件
-- 🔊 分析音频、视频文件（含视频中字幕）
-- 🗄 保存为可查询的讲课内容数据库
-
-### AI 处理生成
-- 🤖 自动生成四选一的选择题
-- 🚀 保证答题时间 <10 秒
-- 🔁 通过持续 prompt 调优闭环提高题目质量
-
-### 用户交互 & 输出
-- 🖥 网页端：
-  - 听众答题，实时正确率反馈
-  - 演讲者查看各题参与情况、正确率
-  - 组织者可跨场次统计、查看用户表现
-- 📱 小程序端：
-  - 完整复刻网页功能，随时随地参与
-- 💬 每道题的即时讨论区
-- 📝 附加反馈（讲太快、太慢、题目质量…）
-- 🏅 生成学习报告、个人排名、徽章收集
-
----
-
-## 🚀 快速开始
-### 克隆项目
+### 1. 环境准备
 ```bash
-git clone https://github.com/EggTangWanLe/ai-pop-quiz.git
-cd ai-pop-quiz
+# 创建conda虚拟环境（Python 3.10）
+conda remove -n summer1 --all -y
+conda create -n summer1 python=3.10 -y
+conda activate summer1
+
+# 安装依赖
+pip install -r requirements.txt
 ```
 
-### 安装依赖
-
+### 2. 模型配置（二选一）
+#### 选项A：使用在线API
 ```bash
-npm install
+# 设置系统环境变量（临时生效）
+export DEEPSEEK_API_KEY="您的API密钥"  # Linux/macOS
+set DEEPSEEK_API_KEY="您的API密钥"     # Windows cmd
+$env:DEEPSEEK_API_KEY="您的API密钥"    # Windows PowerShell
 
+# 永久生效配置（推荐）：
+# Linux/macOS: 添加到 ~/.bashrc 或 ~/.zshrc
+# Windows: 通过系统属性->高级->环境变量添加
 ```
 
-### 启动服务
-
+#### 选项B：使用本地模型
 ```bash
-npm run start
+# 下载模型（约5GB）
+huggingface-cli login
+huggingface-cli download \
+  deepseek-ai/DeepSeek-R1-Distill-Qwen-1.5B \
+  --local-dir ./models/deepseek \
+  --resume-download
 ```
 
-访问：[http://localhost:8080](http://localhost:8080)
+## 🚀 运行系统
 
----
+### 1. 启动数据库服务
+```bash
+# Linux/macOS
+sudo mkdir -p /data/db
+sudo chown -R $USER /data/db
+mongod --dbpath=/data/db
 
+# Windows（管理员权限运行）
+mongod --dbpath=C:\\mongodb-data
+```
 
-## 👥 用户管理
-
-* 支持组织者、演讲者、听众注册、登录
-* 管理演讲者-课程-听众多层级关系
-
----
-
-## 🔒 数据隐私
-
-* 默认采用匿名统计模式
-* 用户可选择是否匿名
-* 所有报告可隐藏用户真实身份
-
----
-
-## 🎯 用户体验亮点
-
-* 🎨 提供多主题昵称（动物园、甜品等）避免实名尴尬
-* 📊 高质量可视化统计图表
-* 🏅 游戏化徽章收集，鼓励持续学习
-* 🔔 温柔弹窗提示答题，避免突兀打断
-
----
-
-## 📄 License
-
-[MIT License](LICENSE)
-
----
-
-## 🙌 贡献
-
-欢迎提交 PR 或 Issue，或在 Discussions 中分享你的想法！
-
----
-
-## ❤️ 特别说明
-
-本项目灵感来自真实教学痛点，期待通过技术提升学习专注度与讲课质量。
-感谢每一位为用户体验与教育创新贡献力量的人！
-
-
+### 2. 启动应用服务
+```bash
+uvicorn main:app --reload --host 0.0.0.0 --port 8000
+```

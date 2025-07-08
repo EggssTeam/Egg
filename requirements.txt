@@ -1,0 +1,24 @@
+# requirements.txt
+# 核心依赖（精确匹配您当前环境版本）
+fastapi==0.115.14
+uvicorn==0.35.0
+pymongo==4.13.2
+motor==3.7.1
+python-multipart==0.0.20
+httpx==0.28.1
+
+# 本地DeepSeek模型依赖
+torch==2.7.1
+transformers==4.53.1
+huggingface-hub==0.33.2
+tokenizers==0.21.2
+safetensors==0.5.3
+
+# 辅助工具
+tqdm==4.67.1
+numpy==2.2.6
+requests==2.32.4
+
+# 开发依赖（可选）
+pytest==7.4.4
+starlette==0.46.2

@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8" />
+    <title>TXT上传与AI生成</title>
+</head>
+<body>
+    <!-- 标题部分 -->
+    <h2>上传TXT文件生成选择题</h2>
+
+    <!-- 上传文件部分：使用DeepSeek API生成问题 -->
+    <div class="upload-section">
+        <h3>使用 DeepSeek API 生成</h3>
+        <form id="uploadForm" enctype="multipart/form-data">
+            <input type="file" name="file" accept=".txt" required />
+            <button type="submit">上传并生成问答（DeepSeek）</button>
+        </form>
+        <pre id="result">等待上传文件...</pre>
+    </div>
+
+    <!-- 上传文件部分：使用本地 DeepSeek 模型生成问题 -->
+    <div class="upload-section">
+        <h3>使用本地 DeepSeek 模型生成</h3>
+        <form id="uploadLocalForm" enctype="multipart/form-data">
+            <input type="file" name="file" accept=".txt" required />
+            <button type="submit">上传并生成问答（本地DeepSeek）</button>
+        </form>
+        <pre id="resultLocal">等待上传文件...</pre>
+    </div>
+
+    <!-- 显示生成的问题和答案 -->
+    <div id="questionSection" style="display: none;">
+        <h3>生成的问题</h3>
+        <div id="questionText"></div>
+        <ul id="optionsList"></ul>
+        <div id="correctAnswer"></div>
+        <button id="checkAnswerButton" onclick="checkAnswer()">提交答案</button>
+        <div id="resultAnswer" style="display:none;"></div>
+    </div>
+
+    <!-- JavaScript 部分：用于处理上传、显示问题和答案 -->
+    <script>
+        // 上传 DeepSeek API 生成问题的处理
+        const form = document.getElementById("uploadForm");
+        const result = document.getElementById("result");
+        const questionSection = document.getElementById("questionSection");
+        const questionText = document.getElementById("questionText");
+        const optionsList = document.getElementById("optionsList");
+        const correctAnswer = document.getElementById("correctAnswer");
+        const resultAnswer = document.getElementById("resultAnswer");
+        let correct_answer = '';
+
+        form.addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const formData = new FormData(form);
+            result.textContent = "文件上传中，正在调用DeepSeek模型生成问答...";
+            try {
+                const res = await fetch("/upload", { method: "POST", body: formData });
+                const data = await res.json();
+                if (data.error) {
+                    result.textContent = "错误: " + data.error;
+                } else {
+                    result.textContent = data.message;
+
+                    // 显示生成的问题
+                    const question = data.qa[0]; // 假设返回的 QA 列表有一个问题
+                    questionText.textContent = "问题：" + question.question;
+                    correct_answer = question.correct_answer;
+
+                    // 显示选项
+                    optionsList.innerHTML = ''; // 清空之前的选项
+                    Object.keys(question.options).forEach((key) => {
+                        const li = document.createElement("li");
+                        const radio = document.createElement("input");
+                        radio.type = "radio";
+                        radio.name = "answer";
+                        radio.value = key;
+                        li.appendChild(radio);
+                        li.appendChild(document.createTextNode(`${key}) ${question.options[key]}`));
+                        optionsList.appendChild(li);
+                    });
+
+                    questionSection.style.display = "block"; // 显示问题区
+                }
+            } catch (error) {
+                result.textContent = "请求失败: " + error.message;
+            }
+        });
+
+        // 选择答案并检查答案是否正确
+        function checkAnswer() {
+            const selectedAnswer = document.querySelector('input[name="answer"]:checked');
+            if (!selectedAnswer) {
+                alert("请选择一个选项!");
+                return;
+            }
+
+            // 获取用户选择的答案
+            const userAnswer = selectedAnswer.value;
+
+            // 比较用户选择的答案与正确答案
+            if (userAnswer === correct_answer) {
+                resultAnswer.textContent = "恭喜！你的答案是正确的！";
+            } else {
+                resultAnswer.textContent = `很遗憾，正确答案是: ${correct_answer}`;
+            }
+
+            // 显示答案提示
+            resultAnswer.style.display = "block";
+        }
+
+        // 上传本地 DeepSeek 模型生成问题的处理
+        const formLocal = document.getElementById("uploadLocalForm");
+        const resultLocal = document.getElementById("resultLocal");
+        formLocal.addEventListener("submit", async (e) => {
+            e.preventDefault();
+            const formData = new FormData(formLocal);
+            resultLocal.textContent = "文件上传中，正在调用本地DeepSeek模型生成问答...";
+            try {
+                const res = await fetch("/upload_local", { method: "POST", body: formData });
+                const data = await res.json();
+                if (data.error) {
+                    resultLocal.textContent = "错误: " + data.error;
+                } else {
+                    resultLocal.textContent = data.message;
+
+                    // 处理生成的选择题（与上面类似的逻辑）
+                    const question = data.qa[0]; // 假设返回的 QA 列表有一个问题
+                    questionText.textContent = "问题：" + question.question;
+                    correct_answer = question.correct_answer;
+
+                    // 显示选项
+                    optionsList.innerHTML = ''; // 清空之前的选项
+                    Object.keys(question.options).forEach((key) => {
+                        const li = document.createElement("li");
+                        const radio = document.createElement("input");
+                        radio.type = "radio";
+                        radio.name = "answer";
+                        radio.value = key;
+                        li.appendChild(radio);
+                        li.appendChild(document.createTextNode(`${key}) ${question.options[key]}`));
+                        optionsList.appendChild(li);
+                    });
+
+                    questionSection.style.display = "block"; // 显示问题区
+                }
+            } catch (error) {
+                resultLocal.textContent = "请求失败: " + error.message;
+            }
+        });
+    </script>
+
+    <!-- 样式部分：页面布局和美化 -->
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        h2, h3 {
+            color: #333;
+        }
+        form {
+            margin: 10px 0 20px 0;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background-color: #f9f9f9;
+        }
+        pre {
+            white-space: pre-wrap;
+            background-color: #f5f5f5;
+            padding: 15px;
+            border-radius: 5px;
+            min-height: 100px;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .upload-section {
+            margin-bottom: 40px;
+        }
+        #questionSection {
+            margin-top: 40px;
+        }
+        #questionText {
+            font-size: 1.2em;
+            margin-bottom: 20px;
+        }
+        #optionsList {
+            list-style: none;
+            padding: 0;
+        }
+        #optionsList li {
+            margin: 10px 0;
+        }
+        #correctAnswer {
+            font-weight: bold;
+            margin-top: 20px;
+        }
+    </style>
+</body>
+</html>

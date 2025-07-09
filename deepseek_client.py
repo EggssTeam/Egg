@@ -16,12 +16,12 @@ def generate_questions(text: str):
     prompt = f"""
 请根据以下文本生成 **1 个选择题**，每个问题包含 **4 个选项（ABCD）**，并标注正确答案。格式如下：
 
-问题 1: ...
+问题: ...
 A) ...
 B) ...
 C) ...
 D) ...
-正确答案: ...
+正确答案: 只给出字母
 
 文本内容:
 {text}
@@ -48,29 +48,28 @@ D) ...
 
         if "choices" in response_data and response_data["choices"]:
             qa_text = response_data["choices"][0]["message"]["content"]
-            # print("生成的选择题文本:", qa_text)  # 移除或注释掉
 
             # 按行分割文本
             lines = qa_text.splitlines()
 
-            # print("分割后的行数:", len(lines))  # 移除或注释掉
-            # for i, line in enumerate(lines):
-            #     print(f"第{i+1}行: {line}")  # 移除或注释掉
-
             # 确保生成的数据符合预期
             if len(lines) < 6:
-                print("生成的选择题文本格式不完整")  # 移除或注释掉
+                print("生成的选择题文本格式不完整")
                 return []
 
-            # 提取问题和选项
-            question = lines[0].strip()  # 问题
+            # 提取问题并去除"问题:"前缀
+            question = lines[0].strip().replace("问题:", "").strip()
+
+            # 提取选项
             options = {
                 "A": lines[1].strip()[3:],  # 去掉 "A) " 前缀
                 "B": lines[2].strip()[3:],  # 去掉 "B) " 前缀
                 "C": lines[3].strip()[3:],  # 去掉 "C) " 前缀
                 "D": lines[4].strip()[3:],  # 去掉 "D) " 前缀
             }
-            correct_answer = lines[5].strip().split(":")[1].strip()  # 正确答案
+
+            # 提取正确答案
+            correct_answer = lines[5].strip().split(":")[1].strip()  # 只保留字母
 
             # 返回结构化的数据
             return [{
@@ -79,9 +78,9 @@ D) ...
                 "correct_answer": correct_answer
             }]
         else:
-            print("API 返回数据没有包含 'choices' 或返回为空")  # 移除或注释掉
+            print("API 返回数据没有包含 'choices' 或返回为空")
             return []
 
     except Exception as e:
-        print(f"API 请求失败: {e}")  # 移除或注释掉
+        print(f"API 请求失败: {e}")
         return []

@@ -1,16 +1,25 @@
-from fastapi import FastAPI, UploadFile
+from fastapi import FastAPI, UploadFile, HTTPException
 from fastapi.responses import HTMLResponse, FileResponse
+from fastapi.templating import Jinja2Templates
+from fastapi.requests import Request
 from pymongo import MongoClient
+
 from deepseek_client import generate_questions  # 调用 DeepSeek API 生成问题
 from deepseek_local_model import generate_questions_local  # 调用本地 DeepSeek 模型生成问题
 import uvicorn
-
-from fastapi import FastAPI, UploadFile, HTTPException
-from deepseek_local_model import generate_questions_local  # 确保导入修改后的函数
-from pymongo import MongoClient
 from datetime import datetime
 from typing import List, Dict
+from pydantic import BaseModel
+
+from bson import ObjectId
+from fastapi.responses import JSONResponse
+
+
+
 app = FastAPI()
+
+# 设置模板路径
+templates = Jinja2Templates(directory="templates")
 
 # MongoDB 配置
 client = MongoClient("mongodb://localhost:27017/")
@@ -20,7 +29,93 @@ collection = db["qa_collection"]
 # 路由：主页
 @app.get("/", response_class=HTMLResponse)
 async def get_index():
-    return FileResponse("index.html")
+    return FileResponse("templates/index.html")
+
+
+# 将 ObjectId 转为字符串（为了 JSON 传输）
+def objectid_to_str(obj):
+    return str(obj['_id'])
+
+# 路由：主页，获取所有问题
+@app.get("/question", response_class=HTMLResponse)
+async def get_questions(request: Request):
+    try:
+        questions = list(collection.find())  # 获取所有文档
+        # 格式化问题列表
+        formatted_questions = []
+        for q in questions:
+            formatted_questions.append({
+                "id": objectid_to_str(q),
+                "question": q.get("question", "未提供问题"),
+                "options": q.get("options", {}),
+                "correct_answer": q.get("correct_answer", "未提供正确答案")
+            })
+
+        # 渲染 HTML 页面并传递问题数据
+        return templates.TemplateResponse("question.html", {
+            "request": request,
+            "questions": formatted_questions
+        })
+    except Exception as e:
+        # 错误处理
+        return HTMLResponse(content=f"发生错误: {e}", status_code=500)
+
+# 定义问题模型
+class QuestionUpdate(BaseModel):
+    question: str
+    options: Dict[str, str]
+    correct_answer: str
+
+
+# 更新问题 API
+@app.put("/question/{id}")
+async def update_question(id: str, question: QuestionUpdate):
+    try:
+        # 确保提供的ID是有效的ObjectId格式
+        if not ObjectId.is_valid(id):
+            raise HTTPException(status_code=400, detail="Invalid ObjectId")
+
+        # 查询问题是否存在
+        existing_question = collection.find_one({"_id": ObjectId(id)})
+        if not existing_question:
+            raise HTTPException(status_code=404, detail="Question not found")
+
+        # 更新问题
+        updated_data = {
+            "question": question.question,
+            "options": question.options,
+            "correct_answer": question.correct_answer,
+        }
+
+        # 执行更新操作
+        collection.update_one({"_id": ObjectId(id)}, {"$set": updated_data})
+
+        return JSONResponse(status_code=200, content={"message": "Question updated successfully"})
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Internal Server Error: {str(e)}")
+
+# 删除问题 API
+@app.delete("/question/{id}")
+async def delete_question(id: str):
+    try:
+        # 确保提供的ID是有效的ObjectId格式
+        if not ObjectId.is_valid(id):
+            raise HTTPException(status_code=400, detail="Invalid ObjectId")
+
+        # 查询问题是否存在
+        existing_question = collection.find_one({"_id": ObjectId(id)})
+        if not existing_question:
+            raise HTTPException(status_code=404, detail="Question not found")
+
+        # 执行删除操作
+        collection.delete_one({"_id": ObjectId(id)})
+
+        return JSONResponse(status_code=200, content={"message": "Question deleted successfully"})
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Internal Server Error: {str(e)}")
+
 
 # 路由：上传文件并调用 DeepSeek API 生成选择题
 @app.post("/upload")
@@ -40,12 +135,10 @@ async def upload_file(file: UploadFile):
             doc = {
                 "filename": file.filename,
                 "question": question["question"],
-                "option_A": question["options"]["A"],
-                "option_B": question["options"]["B"],
-                "option_C": question["options"]["C"],
-                "option_D": question["options"]["D"],
+                "options": question["options"],  # 存储字典
                 "correct_answer": question["correct_answer"],
-                "source": "DeepSeek API"
+                "source": "DeepSeek API",
+                "created_at": datetime.now()  # 增加时间戳
             }
             documents.append(doc)
 

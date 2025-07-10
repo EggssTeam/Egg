@@ -4,7 +4,7 @@ from fastapi.templating import Jinja2Templates
 from fastapi.requests import Request
 from pymongo import MongoClient
 
-from deepseek_client import generate_questions  # 调用 DeepSeek API 生成问题
+from deepseek_client import generate_questions, pdf_to_text  # 调用 DeepSeek API 生成问题
 from deepseek_local_model import generate_questions_local  # 调用本地 DeepSeek 模型生成问题
 import uvicorn
 from datetime import datetime
@@ -13,8 +13,12 @@ from pydantic import BaseModel
 
 from bson import ObjectId
 from fastapi.responses import JSONResponse
+from pdfminer.high_level import extract_text
 
-
+import io
+import httpx
+from fastapi import FastAPI, UploadFile, File, HTTPException
+import requests
 
 app = FastAPI()
 
@@ -156,6 +160,41 @@ async def upload_file(file: UploadFile):
         return {"error": f"处理失败: {str(e)}"}
 
 
+@app.post("/upload_pdf")
+async def upload_pdf(file: UploadFile):
+    try:
+        # 直接在内存中创建BytesIO对象
+        content = await file.read()
+        pdf_stream = io.BytesIO(content)
+
+        # 从内存中提取文本
+        text = extract_text(pdf_stream)
+
+        # 调用 DeepSeek API
+        questions = generate_questions(text)
+        if not questions:
+            raise ValueError("生成的选择题为空，请检查输入文本或API响应")
+
+        documents = []
+        for q in questions:
+            documents.append({
+                "filename": file.filename,
+                "question": q["question"],
+                "options": q["options"],
+                "correct_answer": q["correct_answer"],
+                "source": "DeepSeek API",
+                "created_at": datetime.now()
+            })
+
+        if documents:
+            collection.insert_many(documents)
+
+        return {"message": "处理成功，选择题已存入数据库", "qa": questions}
+
+    except Exception as e:
+        return JSONResponse(content={"error": f"处理失败: {str(e)}"}, status_code=500)
+
+
 @app.post("/upload_local")
 async def upload_file_local(file: UploadFile):
     """
@@ -218,6 +257,118 @@ async def get_question():
             return {"error": "没有问题数据"}
     except Exception as e:
         return {"error": f"查询失败: {str(e)}"}
+
+
+# https://api.openai.com/v1/audio/transcriptions
+
+# 宏定义 Whisper API 地址和你的API KEY
+WHISPER_API_URL = "https://api.gpt.ge/v1/audio/transcriptions"
+OPENAI_API_KEY = "sk-RxDy2FlSA3PP89erC8257937AfE9482cBe6400E14d16E692"
+#
+# @app.post("/upload_audio/")
+# async def upload_audio(file: UploadFile = File(...)):
+#     if not file.content_type.startswith("audio/"):
+#         raise HTTPException(status_code=400, detail="请上传音频文件")
+#
+#     audio_bytes = await file.read()
+#
+#     headers = {
+#         "Authorization": f"Bearer {OPENAI_API_KEY}"
+#     }
+#     files = {
+#         "file": (file.filename, audio_bytes, file.content_type),
+#         "model": (None, "whisper-1"),
+#     }
+#
+#     async with httpx.AsyncClient() as client:
+#         response = await client.post(WHISPER_API_URL, headers=headers, files=files)
+#         print("接口返回内容：", response.text)  # <----- 这里打印接口响应原始内容
+#
+#     if response.status_code != 200:
+#         return JSONResponse(status_code=response.status_code, content={"error": response.text})
+#
+#     result = response.json()
+#     text = result.get("text", "")
+#
+#     # 存入 MongoDB
+#     doc = {
+#         "filename": file.filename,
+#         "transcription": text,
+#         "source": "whisper_api",
+#         "created_at": datetime.utcnow()
+#     }
+#     collection.insert_one(doc)
+#
+#     return {"text": text, "message": "已存入数据库"}
+
+
+
+@app.post("/upload_audio/")
+async def upload_audio(file: UploadFile = File(...)):
+    """
+    接收音频文件 -> Whisper识别 -> DeepSeek生成题目 -> 存入数据库
+    """
+    try:
+        # 读取音频数据
+        audio_bytes = await file.read()
+
+        # 调用Whisper API
+        whisper_headers = {
+            "Authorization": f"Bearer {OPENAI_API_KEY}"
+        }
+        whisper_files = {
+            "file": (file.filename, audio_bytes, file.content_type),
+            "model": (None, "whisper-1")
+        }
+
+        whisper_response = requests.post(
+            WHISPER_API_URL,
+            headers=whisper_headers,
+            files=whisper_files,
+            timeout=60
+        )
+        whisper_response.raise_for_status()
+        whisper_result = whisper_response.json()
+        transcribed_text = whisper_result["text"]
+
+        if not transcribed_text.strip():
+            raise ValueError("Whisper API 未返回有效文本")
+
+        # 调用 DeepSeek 生成选择题
+        questions = generate_questions(transcribed_text)
+
+        if not questions:
+            raise ValueError("生成的选择题为空，请检查输入文本或API响应")
+
+        # 插入MongoDB
+        documents = []
+        for q in questions:
+            documents.append({
+                "filename": file.filename,
+                "question": q["question"],
+                "options": q["options"],
+                "correct_answer": q["correct_answer"],
+                "source": "Whisper + DeepSeek",
+                "created_at": datetime.now()
+            })
+
+        collection.insert_many(documents)
+
+        return {
+            "message": "音频识别完成，选择题已存入数据库",
+            "transcribed_text": transcribed_text,
+            "qa": questions
+        }
+
+    except Exception as e:
+        return JSONResponse(
+            status_code=500,
+            content={"error": f"处理失败: {str(e)}"}
+        )
+
+
+
+
 
 # 启动 FastAPI 应用
 if __name__ == "__main__":

@@ -2,11 +2,18 @@ import os
 import requests
 import re  # 用于正则表达式解析文本
 
+from pdfminer.high_level import extract_text
+
 DEEPSEEK_API_URL = "https://api.deepseek.com/v1/chat/completions"
 DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")
 
+
+
 if not DEEPSEEK_API_KEY:
     raise RuntimeError("环境变量 DEEPSEEK_API_KEY 未设置，请先配置！")
+
+def pdf_to_text(file_path: str) -> str:
+    return extract_text(file_path)
 
 def generate_questions(text: str):
     """

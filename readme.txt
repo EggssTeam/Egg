@@ -7,3 +7,6 @@ mongod
 mongosh
 
 uvicorn main:app --reloadREADME.md
+
+
+pip install pdfminer.six

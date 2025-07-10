@@ -19,7 +19,7 @@ import io
 import httpx
 from fastapi import FastAPI, UploadFile, File, HTTPException
 import requests
-
+import os
 app = FastAPI()
 
 # 设置模板路径
@@ -263,7 +263,7 @@ async def get_question():
 
 # 宏定义 Whisper API 地址和你的API KEY
 WHISPER_API_URL = "https://api.gpt.ge/v1/audio/transcriptions"
-OPENAI_API_KEY = "sk-RxDy2FlSA3PP89erC8257937AfE9482cBe6400E14d16E692"
+OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 #
 # @app.post("/upload_audio/")
 # async def upload_audio(file: UploadFile = File(...)):

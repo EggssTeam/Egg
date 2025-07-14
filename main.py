@@ -1,15 +1,20 @@
-from fastapi import FastAPI, UploadFile, HTTPException
+from wsgiref.validate import validator
+
+from fastapi import FastAPI, UploadFile, HTTPException, Form, Body
 from fastapi.responses import HTMLResponse, FileResponse
 from fastapi.templating import Jinja2Templates
 from fastapi.requests import Request
 from pymongo import MongoClient
+from starlette.responses import RedirectResponse
 
+from db import collection, user_collection
 from deepseek_client import generate_questions, pdf_to_text  # 调用 DeepSeek API 生成问题
 from deepseek_local_model import generate_questions_local  # 调用本地 DeepSeek 模型生成问题
 import uvicorn
 from datetime import datetime
 from typing import List, Dict
 from pydantic import BaseModel
+import re
 
 from bson import ObjectId
 from fastapi.responses import JSONResponse
@@ -20,18 +25,66 @@ import httpx
 from fastapi import FastAPI, UploadFile, File, HTTPException
 import requests
 import os
+
+from fastapi import FastAPI, HTTPException, Depends
+from pydantic import BaseModel, EmailStr
+from pydantic import BaseModel, EmailStr, validator
+import re
+from passlib.context import CryptContext
+from fastapi import FastAPI, HTTPException, status, Depends
+from pydantic import BaseModel, EmailStr, validator
+from passlib.context import CryptContext
+from pymongo import MongoClient
+import re
+
+from lecture import lecture_router
+from user import user_router, verify_password
+
 app = FastAPI()
 
 # 设置模板路径
 templates = Jinja2Templates(directory="templates")
 
-# MongoDB 配置
-client = MongoClient("mongodb://localhost:27017/")
-db = client["mydb"]
-collection = db["qa_collection"]
+# # MongoDB 配置
+# client = MongoClient("mongodb://localhost:27017/")
+# db = client["mydb"]
+# collection = db["qa_collection"]
+# user_collection = db["user"]
+
+
+
+# 加载路由
+app.include_router(user_router, prefix="/user", tags=["User"])
+app.include_router(lecture_router, prefix="/lecture", tags=["Lecture"])
+
+
+# 新的初始页面 / ，可以返回一个新的 HTML 文件，例如：home.html
+# @app.get("/", response_class=HTMLResponse)
+# async def get_home():
+#     return FileResponse("templates/login.html")  # 这是你设置的新初始界面
+
+# 设置登录页面
+@app.get("/", response_class=HTMLResponse)
+async def login_page(request: Request):
+    return templates.TemplateResponse("login.html", {"request": request})
+
+
+@app.get("/register", response_class=HTMLResponse)
+async def login_page(request: Request):
+    return templates.TemplateResponse("register.html", {"request": request})
+
+# 处理登录接口，使用 Body 来接收 JSON 格式数据
+# @app.post("/login")
+# async def login(user: dict = Body(...)):
+#     email = user.get("email")
+#     password = user.get("password")
+#
+#     if email == "user@example.com" and password == "password123":
+#         return RedirectResponse(url="/index", status_code=303)
+#     raise HTTPException(status_code=401, detail="Invalid credentials")
 
 # 路由：主页
-@app.get("/", response_class=HTMLResponse)
+@app.get("/index", response_class=HTMLResponse)
 async def get_index():
     return FileResponse("templates/index.html")
 
@@ -263,6 +316,7 @@ async def get_question():
 
 # 宏定义 Whisper API 地址和你的API KEY
 WHISPER_API_URL = "https://api.gpt.ge/v1/audio/transcriptions"
+GPT4O_API_URL = "https://api.gpt.ge/v1/chat/completions"
 OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
 #
 # @app.post("/upload_audio/")
@@ -366,6 +420,51 @@ async def upload_audio(file: UploadFile = File(...)):
             content={"error": f"处理失败: {str(e)}"}
         )
 
+@app.post("/analyze_file/")
+async def analyze_file(file: UploadFile = File(...)):
+    # 读取文件内容
+    content_bytes = await file.read()
+    try:
+        content_text = content_bytes.decode("utf-8")
+    except UnicodeDecodeError:
+        content_text = content_bytes.decode("latin1")
+
+    # 请求 GPT-4o 分析文本内容
+    headers = {
+        "Authorization": f"Bearer {OPENAI_API_KEY}",
+        "Content-Type": "application/json"
+    }
+
+    payload = {
+        "model": "gpt-4o",
+        "messages": [
+            {"role": "system", "content": "你是一个能够理解并总结文件内容的AI助手。"},
+            {"role": "user", "content": f"请分析以下文本并生成简洁的总结：\n\n{content_text}"}
+        ],
+        "temperature": 0.3
+    }
+
+    async with httpx.AsyncClient(timeout=30.0) as client:
+        response = await client.post(GPT4O_API_URL, headers=headers, json=payload)
+        if response.status_code != 200:
+            return {"error": f"OpenAI API 请求失败: {response.status_code}", "detail": response.text}
+        result = response.json()
+
+    summary_text = result["choices"][0]["message"]["content"].strip()
+
+    # 存入 MongoDB
+    doc = {
+        "filename": file.filename,
+        "original_text": content_text,
+        "summary": summary_text,
+        "created_at": datetime.now()
+    }
+    collection.insert_one(doc)
+
+    return {
+        "filename": file.filename,
+        "summary": summary_text
+    }
 
 
 

@@ -1,0 +1,578 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <title>演讲系统 - 演讲管理</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body, html {
+      font-family: "Helvetica Neue", Arial, sans-serif;
+      height: 100%;
+      background-color: #f5f7fa;
+    }
+    .layout { display: flex; height: 100vh; flex-direction: column; }
+
+    header {
+      height: 50px;
+      background-color: #2d3a4b;
+      color: #fff;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0 20px;
+      font-size: 16px;
+    }
+
+    header .left { font-weight: bold; }
+
+    header .right {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 14px;
+    }
+
+    header .right button {
+      background: none;
+      border: none;
+      color: #fff;
+      cursor: pointer;
+      padding: 4px 8px;
+      border-radius: 3px;
+      transition: background-color 0.2s ease;
+    }
+    header .right button:hover {
+      background-color: #409eff;
+    }
+
+    .main { flex: 1; display: flex; }
+
+    nav.sidebar {
+      width: 220px;
+      background-color: #2d3a4b;
+      color: #fff;
+      padding-top: 20px;
+      flex-shrink: 0;
+    }
+
+    nav.sidebar a {
+      display: block;
+      color: #b0bec5;
+      padding: 12px 30px;
+      text-decoration: none;
+      transition: 0.2s;
+    }
+
+    nav.sidebar a:hover, nav.sidebar a.active {
+      background-color: #409eff;
+      color: #fff;
+    }
+
+    .content {
+      flex: 1;
+      background: #fff;
+      padding: 20px 30px;
+      overflow-y: auto;
+    }
+
+    .top-actions {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 20px;
+    }
+
+    .top-actions h2 {
+      font-size: 22px;
+    }
+
+    .top-actions button {
+      background-color: #1a73e8;
+      color: #fff;
+      font-size: 18px;
+      padding: 10px 25px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: background-color 0.3s ease;
+      user-select: none;
+    }
+
+    .top-actions button:hover {
+      background-color: #155fc1;
+    }
+
+    .section {
+      margin-bottom: 40px;
+    }
+
+    .section h3 {
+      margin-bottom: 10px;
+      font-size: 18px;
+    }
+
+    .cards {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 20px;
+      min-height: 140px;
+    }
+
+    .card {
+      background: #fff;
+      border: 1px solid #e0e6ed;
+      border-radius: 8px;
+      padding: 16px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      min-height: 130px;
+    }
+
+    .card h4 {
+      margin-bottom: 8px;
+      font-size: 16px;
+      word-break: break-word;
+    }
+
+    .card p {
+      margin-bottom: 6px;
+      font-size: 14px;
+      color: #555;
+      word-break: break-word;
+    }
+
+    .card .status {
+      font-weight: bold;
+      margin-top: 4px;
+      user-select: none;
+    }
+
+    .card .status.not-started { color: #409eff; }
+    .card .status.ongoing { color: #673ab7; }
+    .card .status.finished { color: #999; }
+
+    .card .btns {
+      margin-top: 10px;
+    }
+
+    .card button {
+      margin-right: 6px;
+      padding: 6px 10px;
+      font-size: 13px;
+      border: none;
+      border-radius: 4px;
+      color: white;
+      cursor: pointer;
+      user-select: none;
+      transition: background-color 0.2s ease;
+    }
+
+    .card button:hover {
+      filter: brightness(0.9);
+    }
+
+    .edit { background-color: #18a058; }
+    .invite { background-color: #1f90ff; }
+    .start { background-color: #f0ad4e; }
+    .view { background-color: #6666cc; }
+    .delete { background-color: #ff4d4f; }
+    .enter { background-color: #673ab7; }
+
+    .pagination {
+      text-align: right;
+      margin-top: 10px;
+      font-size: 14px;
+      color: #666;
+      user-select: none;
+    }
+
+    .pagination button {
+      background-color: #eee;
+      border: none;
+      padding: 5px 12px;
+      margin-left: 6px;
+      border-radius: 4px;
+      cursor: pointer;
+      transition: background-color 0.2s ease;
+    }
+    .pagination button:hover:not(:disabled) {
+      background-color: #ddd;
+    }
+    .pagination button:disabled {
+      cursor: not-allowed;
+      opacity: 0.5;
+    }
+
+    .modal {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background-color: rgba(0, 0, 0, 0.4);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 1000;
+    }
+
+    .modal.active { display: flex; }
+
+    .modal-box {
+      background: white;
+      padding: 20px;
+      border-radius: 8px;
+      width: 400px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    }
+
+    .modal-box h3 {
+      margin-bottom: 15px;
+      font-size: 20px;
+      user-select: none;
+    }
+
+    .modal-box input {
+      width: 100%;
+      padding: 8px;
+      margin-bottom: 15px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      font-size: 14px;
+    }
+
+    .modal-box input:focus {
+      outline: none;
+      border-color: #409eff;
+      box-shadow: 0 0 6px #409eff;
+    }
+
+    .modal-box .actions {
+      text-align: right;
+    }
+
+    .modal-box .actions button {
+      padding: 8px 16px;
+      font-size: 14px;
+      border-radius: 5px;
+      border: none;
+      cursor: pointer;
+      user-select: none;
+      transition: background-color 0.2s ease;
+    }
+
+    .modal-box .actions .cancel {
+      background-color: #999;
+      color: white;
+      margin-right: 10px;
+    }
+
+    .modal-box .actions .cancel:hover {
+      background-color: #777;
+    }
+
+    .modal-box .actions .add {
+      background-color: #1a73e8;
+      color: white;
+    }
+
+    .modal-box .actions .add:hover {
+      background-color: #155fc1;
+    }
+  </style>
+</head>
+<body>
+<div class="layout">
+  <header>
+    <div class="left">演讲系统</div>
+    <div class="right">
+      <div>张三</div>
+      <button id="logoutBtn" title="退出登录">退出登录</button>
+    </div>
+  </header>
+  <div class="main">
+   <nav class="sidebar">
+     <a href="personal.html">个人主页</a>
+     <a href="speeches.html" class="active">演讲</a>
+   </nav>
+
+    <div class="content">
+      <div class="top-actions">
+        <h2>演讲管理</h2>
+        <button onclick="openModal()">➕ 新建演讲</button>
+      </div>
+
+      <div class="section" id="section-not-started">
+        <h3>未开始的演讲</h3>
+        <div class="cards" id="notStartedContainer"></div>
+        <div class="pagination" id="pagination-not-started">
+          <button onclick="changePage('notStarted', -1)" id="prev-notStarted">&lt;</button>
+          <span id="pageInfo-notStarted">第 1 页 / 共 1 页</span>
+          <button onclick="changePage('notStarted', 1)" id="next-notStarted">&gt;</button>
+        </div>
+      </div>
+
+      <div class="section" id="section-ongoing">
+        <h3>已开始的演讲</h3>
+        <div class="cards" id="ongoingContainer"></div>
+        <div class="pagination" id="pagination-ongoing">
+          <button onclick="changePage('ongoing', -1)" id="prev-ongoing">&lt;</button>
+          <span id="pageInfo-ongoing">第 1 页 / 共 1 页</span>
+          <button onclick="changePage('ongoing', 1)" id="next-ongoing">&gt;</button>
+        </div>
+      </div>
+
+      <div class="section" id="section-finished">
+        <h3>已结束的演讲</h3>
+        <div class="cards" id="finishedContainer"></div>
+        <div class="pagination" id="pagination-finished">
+          <button onclick="changePage('finished', -1)" id="prev-finished">&lt;</button>
+          <span id="pageInfo-finished">第 1 页 / 共 1 页</span>
+          <button onclick="changePage('finished', 1)" id="next-finished">&gt;</button>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- 弹窗 -->
+<div class="modal" id="modal">
+  <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <h3 id="modalTitle">新建演讲</h3>
+    <input type="text" id="speechName" placeholder="演讲名称" aria-label="演讲名称" />
+    <input type="text" id="speaker" placeholder="演讲者" aria-label="演讲者" />
+    <input type="text" id="speechInfo" placeholder="演讲简介" aria-label="演讲简介" />
+    <div class="actions">
+      <button class="cancel" onclick="closeModal()" type="button">取消</button>
+      <button class="add" type="button">添加</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  const pageSize = 3;
+
+  let speeches = [
+    { id: 1, name: 'Vue3 技术分享', speaker: '王五', info: '深入理解组合式 API', status: 'notStarted' },
+    { id: 2, name: 'AI 与未来', speaker: '李四', info: '人工智能伦理思考', status: 'ongoing' },
+    { id: 3, name: '产品设计演讲', speaker: '赵六', info: '用户体验的演变', status: 'finished' },
+  ];
+
+  let currentPage = {
+    notStarted: 1,
+    ongoing: 1,
+    finished: 1
+  };
+
+  let globalId = speeches.length + 1;
+
+  let isEditing = false;
+  let editingId = null;
+
+  const modal = document.getElementById('modal');
+  const modalTitle = document.getElementById('modalTitle');
+  const speechNameInput = document.getElementById('speechName');
+  const speakerInput = document.getElementById('speaker');
+  const speechInfoInput = document.getElementById('speechInfo');
+  const addButton = modal.querySelector('.add');
+  const cancelButton = modal.querySelector('.cancel');
+
+  function openModal() {
+    isEditing = false;
+    editingId = null;
+    modalTitle.textContent = '新建演讲';
+    addButton.textContent = '添加';
+    speechNameInput.value = '';
+    speakerInput.value = '';
+    speechInfoInput.value = '';
+    modal.classList.add('active');
+  }
+
+  function openEditModal(id) {
+    const speech = speeches.find(s => s.id === id);
+    if (!speech) {
+      alert('未找到演讲');
+      return;
+    }
+    isEditing = true;
+    editingId = id;
+    modalTitle.textContent = '编辑演讲';
+    addButton.textContent = '保存';
+    speechNameInput.value = speech.name;
+    speakerInput.value = speech.speaker;
+    speechInfoInput.value = speech.info;
+    modal.classList.add('active');
+  }
+
+  function closeModal() {
+    modal.classList.remove('active');
+    isEditing = false;
+    editingId = null;
+  }
+
+  addButton.onclick = function () {
+    const name = speechNameInput.value.trim();
+    const speaker = speakerInput.value.trim();
+    const info = speechInfoInput.value.trim();
+
+    if (!name || !speaker || !info) {
+      alert('请填写完整信息');
+      return;
+    }
+
+    if (isEditing) {
+      const speech = speeches.find(s => s.id === editingId);
+      if (!speech) {
+        alert('未找到演讲');
+        closeModal();
+        return;
+      }
+      speech.name = name;
+      speech.speaker = speaker;
+      speech.info = info;
+      renderCards(speech.status);
+    } else {
+      speeches.push({
+        id: globalId++,
+        name,
+        speaker,
+        info,
+        status: 'notStarted'
+      });
+      currentPage.notStarted = 1;
+      renderCards('notStarted');
+    }
+    closeModal();
+  };
+
+  function renderCards(status) {
+    const container = document.getElementById(status + 'Container');
+    container.innerHTML = '';
+
+    const filtered = speeches.filter(s => s.status === status);
+    const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+    if (currentPage[status] > totalPages) currentPage[status] = totalPages;
+
+    const start = (currentPage[status] - 1) * pageSize;
+    const pageItems = filtered.slice(start, start + pageSize);
+
+    pageItems.forEach(speech => {
+      const card = document.createElement('div');
+      card.className = 'card';
+
+      let statusLabel = '';
+      let buttonsHTML = '';
+
+      if (status === 'notStarted') {
+        statusLabel = `<p class="status not-started">状态：未开始</p>`;
+        buttonsHTML = `
+          <button class="edit" onclick="openEditModal(${speech.id})">编辑</button>
+          <button class="invite" onclick="inviteSpeaker(${speech.id})">邀请演讲者</button>
+          <button class="start" onclick="startSpeech(${speech.id})">开始演讲</button>
+          <button class="delete" onclick="deleteSpeech(${speech.id})">删除</button>`;
+      } else if (status === 'ongoing') {
+        statusLabel = `<p class="status ongoing">状态：已开始</p>`;
+        buttonsHTML = `<button class="enter" onclick="enterSpeech(${speech.id})">进入演讲</button>`;
+      } else {
+        statusLabel = `<p class="status finished">状态：已结束</p>`;
+        buttonsHTML = `
+          <button class="view" onclick="viewSpeech(${speech.id})">查看</button>
+          <button class="delete" onclick="deleteSpeech(${speech.id})">删除</button>`;
+      }
+
+      card.innerHTML = `
+        <h4>${escapeHtml(speech.name)}</h4>
+        <p>演讲者：${escapeHtml(speech.speaker)}</p>
+        <p>${escapeHtml(speech.info)}</p>
+        ${statusLabel}
+        <div class="btns">${buttonsHTML}</div>
+      `;
+
+      container.appendChild(card);
+    });
+
+    updatePagination(status);
+  }
+
+  function updatePagination(status) {
+    const filtered = speeches.filter(s => s.status === status);
+    const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+    const pageInfo = document.getElementById('pageInfo-' + status);
+    const prevBtn = document.getElementById('prev-' + status);
+    const nextBtn = document.getElementById('next-' + status);
+
+    pageInfo.textContent = `第 ${currentPage[status]} 页 / 共 ${totalPages} 页`;
+    prevBtn.disabled = currentPage[status] === 1;
+    nextBtn.disabled = currentPage[status] === totalPages;
+  }
+
+  function changePage(status, direction) {
+    const filtered = speeches.filter(s => s.status === status);
+    const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+    let newPage = currentPage[status] + direction;
+    if (newPage < 1) newPage = 1;
+    if (newPage > totalPages) newPage = totalPages;
+    if (newPage !== currentPage[status]) {
+      currentPage[status] = newPage;
+      renderCards(status);
+    }
+  }
+
+  function deleteSpeech(id) {
+    if (!confirm('确认删除该演讲吗？')) return;
+    speeches = speeches.filter(s => s.id !== id);
+    ['notStarted', 'ongoing', 'finished'].forEach(status => {
+      const filtered = speeches.filter(s => s.status === status);
+      const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize));
+      if (currentPage[status] > totalPages) currentPage[status] = totalPages;
+      renderCards(status);
+    });
+  }
+
+  function inviteSpeaker(id) {
+    alert('邀请演讲者功能暂未实现');
+  }
+
+  function startSpeech(id) {
+    const speech = speeches.find(s => s.id === id);
+    if (!speech) return;
+    speech.status = 'ongoing';
+    renderAll();
+  }
+
+  function enterSpeech(id) {
+    alert(`进入演讲页面，演讲ID：${id}`);
+  }
+
+  function viewSpeech(id) {
+    // 跳转到演讲信息页面，传递演讲ID作为URL参数
+    window.location.href = `speech_info.html?id=${encodeURIComponent(id)}`;
+  }
+
+
+  function renderAll() {
+    ['notStarted', 'ongoing', 'finished'].forEach(renderCards);
+  }
+
+  function escapeHtml(text) {
+    const map = {
+      '&': '&amp;',
+      '<': '&lt;',
+      '>': '&gt;',
+      '"': '&quot;',
+      "'": '&#039;'
+    };
+    return text.replace(/[&<>"']/g, m => map[m]);
+  }
+
+  document.getElementById('logoutBtn').addEventListener('click', () => {
+    if (confirm('确定退出登录吗？')) {
+      window.location.href = 'login.html';
+    }
+  });
+
+  window.onload = () => {
+    renderAll();
+  };
+</script>
+</body>
+</html>

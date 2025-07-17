@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Login Page</title>
+</head>
+<body>
+
+    <div class="container">
+        <h2>Login</h2>
+
+        <form id="loginForm" onsubmit="event.preventDefault(); login();">
+            <div>
+                <label for="email">Email:</label>
+                <input type="email" id="email" name="email" required placeholder="Enter your email">
+            </div>
+
+            <div>
+                <label for="password">Password:</label>
+                <input type="password" id="password" name="password" required placeholder="Enter your password">
+            </div>
+
+            <button type="submit">Login</button>
+        </form>
+
+        <div id="error-message" style="display:none; color: red;"></div>
+
+        <!-- 去注册的链接 -->
+        <p>Don't have an account? <a href="/register">Register here</a></p>
+
+    </div>
+
+    <script>
+        async function login() {
+            const email = document.getElementById("email").value;
+            const password = document.getElementById("password").value;
+
+            const response = await fetch("http://127.0.0.1:8000/user/login", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify({ email: email, password: password })
+            });
+
+            const data = await response.json();
+
+            if (response.ok) {
+                // If login is successful, redirect to dashboard
+                window.location.href = "/index";  // 或者直接用 RedirectResponse 来跳转
+            } else {
+                // Display error message
+                const errorMessage = document.getElementById("error-message");
+                errorMessage.textContent = data.detail || "Invalid credentials";
+                errorMessage.style.display = "block";
+            }
+        }
+    </script>
+
+    <!-- Styles -->
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f4f9;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+        }
+
+        .container {
+            background: #ffffff;
+            padding: 30px;
+            border-radius: 8px;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            width: 300px;
+            text-align: center;
+        }
+
+        h2 {
+            margin-bottom: 20px;
+            color: #333;
+        }
+
+        form {
+            display: flex;
+            flex-direction: column;
+        }
+
+        label {
+            text-align: left;
+            margin-bottom: 5px;
+            font-size: 14px;
+        }
+
+        input {
+            margin-bottom: 15px;
+            padding: 10px;
+            font-size: 14px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px;
+            font-size: 16px;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            transition: background-color 0.3s ease;
+        }
+
+        button:hover {
+            background-color: #45a049;
+        }
+
+        #error-message {
+            margin-top: 15px;
+            font-size: 14px;
+            color: red;
+        }
+
+        p {
+            margin-top: 15px;
+        }
+
+        a {
+            color: #4CAF50;
+            text-decoration: none;
+        }
+
+        a:hover {
+            text-decoration: underline;
+        }
+    </style>
+
+</body>
+</html>

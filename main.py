@@ -68,6 +68,10 @@ app.include_router(lecture_router, prefix="/lecture", tags=["Lecture"])
 async def login_page(request: Request):
     return templates.TemplateResponse("login.html", {"request": request})
 
+@app.get("/personal", response_class=HTMLResponse)
+async def login_page(request: Request):
+    return templates.TemplateResponse("personal.html", {"request": request})
+
 
 @app.get("/register", response_class=HTMLResponse)
 async def login_page(request: Request):

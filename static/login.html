@@ -321,58 +321,122 @@
     <p>还没有账号？<a href="register.html">去注册</a></p>
 </div>
 
+
+
 <!-- Eggssteam Logo -->
 <div class="logo">Eggssteam</div>
 
 <script>
-    async function login() {
-  const errorMessage = document.getElementById("error-message");
-  errorMessage.style.display = "none";
-  errorMessage.textContent = "";
+    //     async function login() {
+    //   const errorMessage = document.getElementById("error-message");
+    //   errorMessage.style.display = "none";
+    //   errorMessage.textContent = "";
+    //
+    //   const emailInput = document.getElementById("email");
+    //   const passwordInput = document.getElementById("password");
+    //   const email = emailInput.value.trim();
+    //   const password = passwordInput.value;
+    //
+    //   // 输入检查
+    //   if (!email || !password) {
+    //     errorMessage.textContent = "请填写邮箱和密码。";
+    //     errorMessage.style.display = "block";
+    //     if (!email) emailInput.classList.add("error");
+    //     if (!password) passwordInput.classList.add("error");
+    //     return;
+    //   } else {
+    //     emailInput.classList.remove("error");
+    //     passwordInput.classList.remove("error");
+    //   }
+    //
+    //   try {
+    //     const response = await fetch("http://127.0.0.1:8000/user/login", {
+    //       method: "POST",
+    //       headers: { "Content-Type": "application/json" },
+    //       body: JSON.stringify({ email, password }),
+    //     });
+    //
+    //     const data = await response.json();
+    //
+    //     if (response.ok) {
+    //       // 登录成功，保存 userId，并跳转到 person.html（用 id 传参）
+    //       sessionStorage.setItem("userId", data.user.id);
+    //       window.location.href = `person.html?id=${encodeURIComponent(data.user.id)}`;
+    //     } else {
+    //       errorMessage.textContent = data.detail || "登录失败，请检查邮箱和密码。";
+    //       errorMessage.style.display = "block";
+    //       emailInput.classList.add("error");
+    //       passwordInput.classList.add("error");
+    //     }
+    //   } catch (err) {
+    //     errorMessage.textContent = "请求异常：" + err.message;
+    //     errorMessage.style.display = "block";
+    //   }
+    // }
+    // <script>
+        async function login() {
+        const errorMessage = document.getElementById("error-message");
+        errorMessage.style.display = "none";
+        errorMessage.textContent = "";
 
-  const emailInput = document.getElementById("email");
-  const passwordInput = document.getElementById("password");
-  const email = emailInput.value.trim();
-  const password = passwordInput.value;
+        const emailInput = document.getElementById("email");
+        const passwordInput = document.getElementById("password");
+        const email = emailInput.value.trim();
+        const password = passwordInput.value;
 
-  // 输入检查
-  if (!email || !password) {
-    errorMessage.textContent = "请填写邮箱和密码。";
-    errorMessage.style.display = "block";
-    if (!email) emailInput.classList.add("error");
-    if (!password) passwordInput.classList.add("error");
-    return;
-  } else {
-    emailInput.classList.remove("error");
-    passwordInput.classList.remove("error");
-  }
+        // 输入检查
+        if (!email || !password) {
+        errorMessage.textContent = "请填写邮箱和密码。";
+        errorMessage.style.display = "block";
+        if (!email) emailInput.classList.add("error");
+        if (!password) passwordInput.classList.add("error");
+        return;
+    } else {
+        emailInput.classList.remove("error");
+        passwordInput.classList.remove("error");
+    }
 
-  try {
-    const response = await fetch("http://127.0.0.1:8000/user/login", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ email, password }),
+        try {
+        const response = await fetch("http://127.0.0.1:8000/user/login", {
+        method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({email, password}),
     });
 
-    const data = await response.json();
+        const data = await response.json();
 
-    if (response.ok) {
-      // 登录成功，保存 userId，并跳转到 person.html（用 id 传参）
-      sessionStorage.setItem("userId", data.user.id);
-      window.location.href = `person.html?id=${encodeURIComponent(data.user.id)}`;
+        if (response.ok) {
+        // 登录成功，保存 userId，并跳转
+        sessionStorage.setItem("userId", data.user.id);
+
+        // openModal("successModal");  // ✅ 弹出“成功”提示框
+        setTimeout(() => {
+        window.location.href = `person.html?id=${encodeURIComponent(data.user.id)}`;
+    }, 100);  // 稍微延迟 1 秒跳转，让用户看到弹窗
     } else {
-      errorMessage.textContent = data.detail || "登录失败，请检查邮箱和密码。";
-      errorMessage.style.display = "block";
-      emailInput.classList.add("error");
-      passwordInput.classList.add("error");
+        // openModal("failureModal");  // ❌ 弹出“失败”提示框
+        errorMessage.textContent = data.detail || "登录失败，请检查邮箱和密码。";
+        errorMessage.style.display = "block";
+        emailInput.classList.add("error");
+        passwordInput.classList.add("error");
     }
-  } catch (err) {
-    errorMessage.textContent = "请求异常：" + err.message;
-    errorMessage.style.display = "block";
-  }
-}
+    } catch (err) {
+        errorMessage.textContent = "请求异常：" + err.message;
+        errorMessage.style.display = "block";
+    }
+    }
 
+    //     // 弹窗控制
+    //     function openModal(modalId) {
+    //     document.getElementById(modalId).style.display = "flex";
+    // }
+    //
+    //     function closeModal() {
+    //     document.getElementById("successModal").style.display = "none";
+    //     document.getElementById("failureModal").style.display = "none";
+    // }
 </script>
+
 
 </body>
 </html>

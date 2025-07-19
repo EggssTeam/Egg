@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8" />
+    <title>演讲列表</title>
+</head>
+<body>
+    <h1>演讲列表</h1>
+    <table border="1" cellpadding="8">
+        <thead>
+            <tr>
+                <th>主题</th>
+                <th>开始时间</th>
+                <th>演讲者ID</th>
+                <th>组织者ID</th>
+                <th>状态</th>
+                <th>操作</th>
+            </tr>
+        </thead>
+        <tbody id="lecture-table-body">
+            <!-- 动态填充 -->
+        </tbody>
+    </table>
+
+    <script>
+        fetch('/lecture/')  // 你这个接口返回所有演讲数组
+            .then(res => res.json())
+            .then(data => {
+                const tbody = document.getElementById('lecture-table-body');
+                data.forEach(lecture => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td>${lecture.topic}</td>
+                        <td>${lecture.start_time}</td>
+                        <td>${lecture.speaker_id}</td>
+                        <td>${lecture.organizer_id}</td>
+                        <td>${lecture.status}</td>
+                        <td>
+                            <a href="/static/lecture_detail.html?id=${lecture.id}">
+                                <button>开始演讲</button>
+                            </a>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+            })
+            .catch(err => {
+                console.error("加载演讲列表失败", err);
+            });
+    </script>
+</body>
+</html>

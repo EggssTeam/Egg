@@ -1,0 +1,155 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>问题和选择</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            padding: 20px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        h2 {
+            color: #333;
+        }
+        .question-container {
+            margin-bottom: 20px;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+            background-color: #f9f9f9;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        #resultSection {
+            margin-top: 20px;
+            font-size: 1.1em;
+        }
+        .result {
+            font-weight: bold;
+            margin-top: 10px;
+        }
+        .result.correct {
+            color: green;
+        }
+        .result.incorrect {
+            color: red;
+        }
+    </style>
+</head>
+<body>
+    <h2>请选择正确的答案</h2>
+
+    <div id="questionSection">
+        <!-- 这里会由 JS 动态插入问题 -->
+    </div>
+
+    <button type="button" onclick="submitAllAnswers()">提交所有答案</button>
+
+    <div id="resultSection" style="display:none;">
+        <h3>提交结果</h3>
+        <p id="correctCount"></p>
+        <p id="totalCount"></p>
+    </div>
+
+    <script>
+        let userAnswers = {};
+        let totalQuestions = 0;
+        let correctAnswersCount = 0;
+
+        // 页面加载后获取问题数据
+        window.onload = async () => {
+            try {
+                const res = await fetch('/question'); // 替换成你后端对应的问题接口路径
+                if (!res.ok) throw new Error("加载问题失败，状态码：" + res.status);
+                const questions = await res.json();
+
+                const questionSection = document.getElementById('questionSection');
+                questionSection.innerHTML = ''; // 清空容器
+
+                questions.forEach(q => {
+                    const container = document.createElement('div');
+                    container.className = 'question-container';
+                    container.id = `question_${q.id}`;
+                    container.dataset.correctAnswer = q.correct_answer;
+
+                    let optionsHTML = '';
+                    for (const [key, val] of Object.entries(q.options)) {
+                        optionsHTML += `
+                            <li>
+                                <input type="radio" name="answer_${q.id}" value="${key}" /> ${key}: ${val}
+                            </li>
+                        `;
+                    }
+
+                    container.innerHTML = `
+                        <h3>${q.question}</h3>
+                        <ul>${optionsHTML}</ul>
+                        <div id="result_${q.id}" class="result" style="display:none;"></div>
+                    `;
+
+                    questionSection.appendChild(container);
+                });
+
+                // 绑定单选按钮监听
+                document.querySelectorAll('input[type="radio"]').forEach(radio => {
+                    radio.addEventListener('change', (e) => {
+                        const questionId = e.target.name.split('_')[1];
+                        const selectedAnswer = e.target.value;
+                        userAnswers[questionId] = selectedAnswer;
+                    });
+                });
+
+            } catch (error) {
+                console.error('加载问题失败:', error);
+                document.getElementById('questionSection').textContent = '加载问题失败，请稍后重试。';
+            }
+        };
+
+        // 提交答案并显示结果
+        function submitAllAnswers() {
+            const resultSection = document.getElementById("resultSection");
+            const correctCountElement = document.getElementById("correctCount");
+            const totalCountElement = document.getElementById("totalCount");
+
+            correctAnswersCount = 0;
+            resultSection.style.display = "block";
+
+            const questions = document.querySelectorAll('.question-container');
+            totalQuestions = questions.length;
+
+            questions.forEach(question => {
+                const questionId = question.id.split('_')[1];
+                const correctAnswer = question.dataset.correctAnswer;
+                const selectedAnswer = userAnswers[questionId];
+                const isCorrect = selectedAnswer === correctAnswer;
+                if (isCorrect) correctAnswersCount++;
+
+                const resultDiv = document.getElementById(`result_${questionId}`);
+                if (selectedAnswer) {
+                    resultDiv.textContent = `你的答案: ${selectedAnswer} ${isCorrect ? '(正确)' : '(错误)'}`;
+                    resultDiv.className = 'result ' + (isCorrect ? 'correct' : 'incorrect');
+                } else {
+                    resultDiv.textContent = "你没有选择答案!";
+                    resultDiv.className = 'result incorrect';
+                }
+                resultDiv.style.display = "block";
+            });
+
+            correctCountElement.textContent = `恭喜你答对了 ${correctAnswersCount} 题！`;
+            totalCountElement.textContent = `总共有 ${totalQuestions} 题。`;
+        }
+    </script>
+</body>
+</html>

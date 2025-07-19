@@ -1,0 +1,595 @@
+
+
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>个人主页</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body, html {
+      font-family: "Helvetica Neue", Arial, sans-serif;
+      height: 100%;
+      background-color: #151414;
+    }
+    .layout { display: flex; height: 100vh; flex-direction: column; }
+    header {
+      height: 50px;
+      background-color: #2d3a4b;
+      color: white;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0 20px;
+      font-size: 16px;
+    }
+    header .left { font-weight: bold; }
+    header .right {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 14px;
+    }
+    header .right button {
+      background: none;
+      border: none;
+      color: white;
+      cursor: pointer;
+    }
+    .main {
+      flex: 1;
+      display: flex;
+    }
+    nav.sidebar {
+      width: 220px;
+      background-color: #2d3a4b;
+      color: white;
+      padding-top: 20px;
+      flex-shrink: 0;
+    }
+    nav.sidebar a {
+      display: block;
+      color: #b0bec5;
+      padding: 12px 30px;
+      text-decoration: none;
+    }
+    nav.sidebar a:hover, nav.sidebar a.active {
+      background-color: #409eff;
+      color: white;
+    }
+    .content {
+      flex: 1;
+      display: flex;
+      justify-content: flex-start;
+      align-items: center;
+      position: relative;
+      background-size: cover;
+      background-position: center;
+      padding-left: 40px;
+    }
+    .profile-container {
+      width: 70%;
+      max-width: 600px;
+      background: rgba(0, 0, 0, 0.2);
+      border-radius: 12px;
+      padding: 40px 50px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      color: white;
+    }
+    .profile-avatar {
+      width: 140px;
+      height: 140px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 4px solid #fff;
+      margin-bottom: 25px;
+      background-color: black;
+    }
+    .profile-field {
+      font-size: 16px;
+      margin: 10px 0;
+      width: 100%;
+      display: flex;
+      align-items: center;
+      color: white;
+    }
+    .profile-field span.label {
+      font-weight: bold;
+      width: 80px;
+    }
+    .profile-field span.value {
+      flex: 1;
+      word-break: break-word;
+    }
+    .edit-btn, .bg-btn {
+      margin-top: 30px;
+      background-color: #409eff;
+      color: white;
+      border: none;
+      padding: 12px 22px;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 16px;
+    }
+    .edit-btn:hover, .bg-btn:hover {
+      background-color: #2b8cd7;
+    }
+    .bg-btn {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      font-size: 14px;
+      padding: 8px 16px;
+    }
+    .modal {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background-color: rgba(0,0,0,0.4);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 999;
+    }
+    .modal.active { display: flex; }
+    .modal-box {
+      background: white;
+      padding: 30px 35px;
+      border-radius: 8px;
+      width: 380px;
+      box-shadow: 0 6px 18px rgba(0,0,0,0.15);
+      color: #333;
+    }
+    .modal-box h3 {
+      margin-bottom: 18px;
+      text-align: center;
+      font-weight: 600;
+      font-size: 22px;
+    }
+    .modal-box label {
+      display: block;
+      margin-top: 14px;
+      font-size: 14px;
+    }
+    .modal-box input, .modal-box textarea {
+      width: 100%;
+      padding: 8px 10px;
+      margin-top: 6px;
+      border-radius: 5px;
+      border: 1px solid #ccc;
+      font-size: 15px;
+      box-sizing: border-box;
+    }
+    .avatar-preview {
+      margin-top: 10px;
+      width: 120px;
+      height: 120px;
+      border-radius: 50%;
+      object-fit: cover;
+      border: 2px solid #ddd;
+      display: none;
+    }
+    .modal-box .actions {
+      margin-top: 26px;
+      text-align: right;
+    }
+    .modal-box button {
+      padding: 10px 18px;
+      border: none;
+      border-radius: 6px;
+      margin-left: 14px;
+      cursor: pointer;
+      font-size: 15px;
+    }
+    .modal-box .save { background-color: #409eff; color: white; }
+    .modal-box .save:hover { background-color: #2b8cd7; }
+    .modal-box .cancel { background-color: #ccc; }
+    .modal-box .cancel:hover { background-color: #999; }
+
+    #message {
+      position: absolute;
+      top: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      color: red;
+      font-weight: bold;
+      z-index: 1000;
+      background: rgba(255,255,255,0.8);
+      padding: 5px 15px;
+      border-radius: 8px;
+      display: none;
+    }
+  </style>
+</head>
+<!--<body>-->
+<!--<div class="layout">-->
+<!--  <header>-->
+<!--    <div class="left">演讲系统</div>-->
+<!--    <div class="right">-->
+<!--      <div id="usernameDisplay">你好！用户</div>-->
+<!--      <button onclick="logout()">退出登录</button>-->
+<!--    </div>-->
+<!--  </header>-->
+<!--  <div class="main">-->
+<!--    <nav class="sidebar">-->
+<!--      <a href="personal.html" class="active">个人主页</a>-->
+<!--      <a href="speeches.html">演讲</a>-->
+<!--    </nav>-->
+<!--    <div class="content" id="mainContent">-->
+<!--      <button class="bg-btn" onclick="document.getElementById('bgInput').click()">添加背景</button>-->
+<!--      <input type="file" id="bgInput" accept="image/*" style="display:none" onchange="changeBackground(event)" />-->
+<!--      <div class="profile-container">-->
+<!--        <img id="avatar" class="profile-avatar" alt="" />-->
+<!--        <div class="profile-field"><span class="label">用户名：</span><span id="username" class="value"></span></div>-->
+<!--        <div class="profile-field"><span class="label">邮箱：</span><span id="email" class="value"></span></div>-->
+<!--        <div class="profile-field"><span class="label">签名：</span><span id="signature" class="value"></span></div>-->
+<!--        <button class="edit-btn" onclick="openModal()">编辑资料</button>-->
+<!--      </div>-->
+<!--    </div>-->
+<!--  </div>-->
+<!--</div>-->
+
+<!--<div id="message"></div>-->
+
+<!--&lt;!&ndash; 编辑弹窗 &ndash;&gt;-->
+<!--<div class="modal" id="editModal">-->
+<!--  <div class="modal-box">-->
+<!--    <h3>编辑资料</h3>-->
+<!--    <label>用户名：<input id="editUsername" type="text" /></label>-->
+<!--    <label>邮箱（不可修改）：<input id="editEmail" type="email" readonly /></label>-->
+<!--    <label>密码：<input id="editPassword" type="password" placeholder="填写则修改密码" /></label>-->
+<!--    <label>签名：<textarea id="editSignature" rows="3"></textarea></label>-->
+<!--    <label>头像URL：<input id="editAvatarUrl" type="text" placeholder="请输入头像URL" /></label>-->
+<!--    <img id="avatarPreview" class="avatar-preview" alt="头像预览" />-->
+<!--    <div class="actions">-->
+<!--      <button class="cancel" onclick="closeModal()">取消</button>-->
+<!--      <button class="save" onclick="saveProfile()">保存</button>-->
+<!--    </div>-->
+<!--  </div>-->
+<!--</div>-->
+
+<!--<script>-->
+<!--  // 读取URL参数email-->
+<!--  function getQueryParam(name) {-->
+<!--    const urlParams = new URLSearchParams(window.location.search);-->
+<!--    return urlParams.get(name);-->
+<!--  }-->
+
+<!--  const email = getQueryParam("email");-->
+<!--  const messageDiv = document.getElementById("message");-->
+<!--  const bgData = localStorage.getItem(`background_${email}`);-->
+
+<!--  // 页面元素-->
+<!--  const usernameDisplay = document.getElementById('usernameDisplay');-->
+<!--  const usernameEl = document.getElementById('username');-->
+<!--  const emailEl = document.getElementById('email');-->
+<!--  const signatureEl = document.getElementById('signature');-->
+<!--  const avatarEl = document.getElementById('avatar');-->
+
+<!--  const editModal = document.getElementById('editModal');-->
+<!--  const editUsername = document.getElementById('editUsername');-->
+<!--  const editEmail = document.getElementById('editEmail');-->
+<!--  const editPassword = document.getElementById('editPassword');-->
+<!--  const editSignature = document.getElementById('editSignature');-->
+<!--  const editAvatarUrl = document.getElementById('editAvatarUrl');-->
+<!--  const avatarPreview = document.getElementById('avatarPreview');-->
+
+<!--  function showMessage(msg, isError=true) {-->
+<!--    messageDiv.style.display = 'block';-->
+<!--    messageDiv.style.color = isError ? 'red' : 'green';-->
+<!--    messageDiv.textContent = msg;-->
+<!--    setTimeout(() => {-->
+<!--      messageDiv.style.display = 'none';-->
+<!--    }, 4000);-->
+<!--  }-->
+
+<!--  if (!email) {-->
+<!--    showMessage("缺少邮箱参数，无法加载用户信息");-->
+<!--  } else {-->
+<!--    // 加载用户信息-->
+<!--    fetch(`/user/${encodeURIComponent(email)}`)-->
+<!--      .then(res => {-->
+<!--        if (!res.ok) throw new Error("用户不存在");-->
+<!--        return res.json();-->
+<!--      })-->
+<!--      .then(user => {-->
+<!--        usernameDisplay.textContent = `你好！${user.username || '用户'}`;-->
+<!--        usernameEl.textContent = user.username || '';-->
+<!--        emailEl.textContent = user.email || email; // 优先后端返回的email-->
+<!--        signatureEl.textContent = user.motto || '';-->
+<!--        avatarEl.src = user.avatar || 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTQwIiBoZWlnaHQ9IjE0MCIgdmlld0JveD0iMCAwIDE0MCAxNDAiIHhtbG5zPSJodHRwOi8vd3d3LnczLm9yZy8yMDAwL3N2ZyI+PHJlY3Qgd2lkdGg9IjE0MCIgaGVpZ2h0PSIxNDAiIGZpbGw9IiMwMDAwMDAiLz48L3N2Zz4=';-->
+
+<!--        // 填充编辑框，邮箱不可改-->
+<!--        editUsername.value = user.username || '';-->
+<!--        editEmail.value = user.email || email;-->
+<!--        editSignature.value = user.motto || '';-->
+<!--        editAvatarUrl.value = user.avatar || '';-->
+<!--        avatarPreview.style.display = 'none';-->
+<!--        editPassword.value = '';-->
+<!--      })-->
+<!--      .catch(err => {-->
+<!--        showMessage("加载用户信息失败：" + err.message);-->
+<!--      });-->
+<!--  }-->
+
+<!--  function logout() {-->
+<!--    if (confirm('确认退出登录？')) {-->
+<!--      window.location.href = 'login.html';-->
+<!--    }-->
+<!--  }-->
+
+<!--  function openModal() {-->
+<!--    editModal.classList.add('active');-->
+<!--  }-->
+<!--  function closeModal() {-->
+<!--    editModal.classList.remove('active');-->
+<!--  }-->
+
+<!--  editAvatarUrl.addEventListener('input', () => {-->
+<!--    const url = editAvatarUrl.value.trim();-->
+<!--    if (url) {-->
+<!--      avatarPreview.src = url;-->
+<!--      avatarPreview.style.display = 'block';-->
+<!--    } else {-->
+<!--      avatarPreview.style.display = 'none';-->
+<!--    }-->
+<!--  });-->
+
+<!--  async function saveProfile() {-->
+<!--    const newUsername = editUsername.value.trim();-->
+<!--    const newEmail = editEmail.value.trim();-->
+<!--    const newSignature = editSignature.value.trim();-->
+<!--    const newAvatar = editAvatarUrl.value.trim();-->
+<!--    const newPassword = editPassword.value.trim();-->
+
+<!--    if (!newUsername || !newEmail) {-->
+<!--      alert('用户名和邮箱不能为空');-->
+<!--      return;-->
+<!--    }-->
+
+<!--    // 组装要更新的字段（密码若不为空，则传递）-->
+<!--    const updateData = { username: newUsername, motto: newSignature, avatar: newAvatar };-->
+<!--    if (newPassword) {-->
+<!--      updateData.password = newPassword;-->
+<!--    }-->
+
+<!--    try {-->
+<!--      const res = await fetch(`/user/update/${encodeURIComponent(newEmail)}`, {-->
+<!--        method: 'PUT',-->
+<!--        headers: { 'Content-Type': 'application/json' },-->
+<!--        body: JSON.stringify(updateData)-->
+<!--      });-->
+<!--      const data = await res.json();-->
+<!--      if (res.ok) {-->
+<!--        showMessage("修改成功: " + (data.updated_fields || []).join(", "), false);-->
+
+<!--        // 更新页面显示-->
+<!--        usernameDisplay.textContent = `你好！${newUsername}`;-->
+<!--        usernameEl.textContent = newUsername;-->
+<!--        emailEl.textContent = newEmail;-->
+<!--        signatureEl.textContent = newSignature;-->
+<!--        avatarEl.src = newAvatar || avatarEl.src;-->
+
+<!--        closeModal();-->
+<!--      } else {-->
+<!--        showMessage("修改失败: " + (data.detail || "未知错误"));-->
+<!--      }-->
+<!--    } catch (err) {-->
+<!--      showMessage("请求失败: " + err.message);-->
+<!--    }-->
+<!--  }-->
+
+<!--  function changeBackground(event) {-->
+<!--    const file = event.target.files[0];-->
+<!--    if (file) {-->
+<!--      const reader = new FileReader();-->
+<!--      reader.onload = function(e) {-->
+<!--        const bgData = e.target.result;-->
+<!--        document.getElementById('mainContent').style.backgroundImage = `url(${bgData})`;-->
+<!--        localStorage.setItem('background', bgData);-->
+<!--      }-->
+<!--      reader.readAsDataURL(file);-->
+<!--    }-->
+<!--  }-->
+
+<!--</script>-->
+<!--</body>-->
+<!--</html>-->
+<body>
+<div class="layout">
+  <header>
+    <div class="left">演讲系统</div>
+    <div class="right">
+      <div id="usernameDisplay">你好！用户</div>
+      <button onclick="logout()">退出登录</button>
+    </div>
+  </header>
+  <div class="main">
+    <nav class="sidebar">
+      <a href="personal.html" class="active">个人主页</a>
+      <a href="speeches.html">演讲</a>
+    </nav>
+    <div class="content" id="mainContent">
+<!--      <button class="bg-btn" onclick="document.getElementById('bgInput').click()">添加背景</button>-->
+      <input type="file" id="bgInput" accept="image/*" style="display:none" onchange="changeBackground(event)" />
+      <div class="profile-container">
+        <img id="avatar" class="profile-avatar" alt="" />
+        <div class="profile-field"><span class="label">用户名：</span><span id="username" class="value"></span></div>
+        <div class="profile-field"><span class="label">邮箱：</span><span id="email" class="value"></span></div>
+        <div class="profile-field"><span class="label">签名：</span><span id="signature" class="value"></span></div>
+        <button class="edit-btn" onclick="openModal()">编辑资料</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div id="message"></div>
+
+<!-- 编辑弹窗 -->
+<div class="modal" id="editModal">
+  <div class="modal-box">
+    <h3>编辑资料</h3>
+    <form id="editForm">
+      <label>用户名：<input id="editUsername" name="username" type="text" /></label>
+      <label>邮箱（不可修改）：<input id="editEmail" type="email" readonly /></label>
+      <label>签名：<textarea id="editSignature" name="motto" rows="3"></textarea></label>
+      <label>上传头像：<input type="file" id="editAvatarFile" name="avatar" accept="image/*" /></label>
+      <img id="avatarPreview" class="avatar-preview" alt="头像预览" style="display:none" />
+      <label>上传背景：<input type="file" id="editBackgroundFile" name="background" accept="image/*" /></label>
+      <div id="backgroundPreview" style="width:100%; height:150px; margin-top:8px; border:1px solid #ccc; display:none; background-size: cover; background-position: center;"></div>
+      <div class="actions">
+        <button class="cancel" type="button" onclick="closeModal()">取消</button>
+        <button class="save" type="submit">保存</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+<script>
+  const email = new URLSearchParams(location.search).get("email");
+  const messageDiv = document.getElementById("message");
+
+  const usernameDisplay = document.getElementById('usernameDisplay');
+  const usernameEl = document.getElementById('username');
+  const emailEl = document.getElementById('email');
+  const signatureEl = document.getElementById('signature');
+  const avatarEl = document.getElementById('avatar');
+
+  const editModal = document.getElementById('editModal');
+  const editUsername = document.getElementById('editUsername');
+  const editEmail = document.getElementById('editEmail');
+  const editSignature = document.getElementById('editSignature');
+  const editAvatarFile = document.getElementById('editAvatarFile');
+  const avatarPreview = document.getElementById('avatarPreview');
+  const editBackgroundFile = document.getElementById('editBackgroundFile');
+  const backgroundPreview = document.getElementById('backgroundPreview');
+
+  function showMessage(msg, isError = true) {
+    messageDiv.style.display = 'block';
+    messageDiv.style.color = isError ? 'red' : 'green';
+    messageDiv.textContent = msg;
+    setTimeout(() => messageDiv.style.display = 'none', 4000);
+  }
+
+  function logout() {
+    if (confirm('确认退出登录？')) {
+      location.href = 'login.html';
+    }
+  }
+
+  function openModal() {
+    editModal.classList.add('active');
+  }
+
+  function closeModal() {
+    editModal.classList.remove('active');
+
+    // 清空头像预览和文件输入
+    avatarPreview.style.display = 'none';
+    avatarPreview.src = '';
+    editAvatarFile.value = '';
+
+    // 清空背景预览和文件输入
+    backgroundPreview.style.backgroundImage = '';
+    backgroundPreview.style.display = 'none';
+    editBackgroundFile.value = '';
+  }
+
+  editAvatarFile.addEventListener('change', () => {
+    const file = editAvatarFile.files[0];
+    if (file) {
+      avatarPreview.src = URL.createObjectURL(file);
+      avatarPreview.style.display = 'block';
+    } else {
+      avatarPreview.style.display = 'none';
+      avatarPreview.src = '';
+    }
+  });
+
+  editBackgroundFile.addEventListener('change', () => {
+    const file = editBackgroundFile.files[0];
+    if (file) {
+      const url = URL.createObjectURL(file);
+      backgroundPreview.style.backgroundImage = `url(${url})`;
+      backgroundPreview.style.display = 'block';
+    } else {
+      backgroundPreview.style.backgroundImage = '';
+      backgroundPreview.style.display = 'none';
+    }
+  });
+
+  document.getElementById('editForm').addEventListener('submit', async (e) => {
+    e.preventDefault();
+
+    const formData = new FormData();
+    formData.append("username", editUsername.value.trim());
+    formData.append("motto", editSignature.value.trim());
+    if (editAvatarFile.files[0]) {
+      formData.append("avatar", editAvatarFile.files[0]);
+    }
+    if (editBackgroundFile.files[0]) {
+      formData.append("background", editBackgroundFile.files[0]);
+    }
+
+    try {
+      const res = await fetch(`/user/update/${encodeURIComponent(email)}`, {
+        method: 'PUT',
+        body: formData
+      });
+      const data = await res.json();
+      if (res.ok) {
+        showMessage("修改成功: " + (data.updated_fields || []).join(", "), false);
+        usernameDisplay.textContent = `你好！${editUsername.value}`;
+        usernameEl.textContent = editUsername.value;
+        signatureEl.textContent = editSignature.value;
+        if (data.updated_fields.includes("avatar")) {
+          avatarEl.src = avatarPreview.src;
+        }
+        if (data.updated_fields.includes("background")) {
+          document.getElementById('mainContent').style.backgroundImage = backgroundPreview.style.backgroundImage;
+        }
+        closeModal();
+      } else {
+        showMessage("修改失败: " + (data.detail || "未知错误"));
+      }
+    } catch (err) {
+      showMessage("请求失败: " + err.message);
+    }
+  });
+
+  fetch(`/user/${encodeURIComponent(email)}`)
+    .then(res => {
+      if (!res.ok) throw new Error("用户不存在");
+      return res.json();
+    })
+    .then(user => {
+      usernameDisplay.textContent = `你好！${user.username || '用户'}`;
+      usernameEl.textContent = user.username || '';
+      emailEl.textContent = user.email || email;
+      signatureEl.textContent = user.motto || '';
+      avatarEl.src = user.avatar || '';
+
+      // 如果后台有背景，设置到mainContent
+      if(user.background) {
+        document.getElementById('mainContent').style.backgroundImage = `url(${user.background})`;
+      }
+
+      editUsername.value = user.username || '';
+      editEmail.value = user.email || email;
+      editSignature.value = user.motto || '';
+    })
+    .catch(err => {
+      showMessage("加载用户信息失败：" + err.message);
+    });
+
+  // 这里原先背景按钮和localStorage的逻辑你说不要了，可以注释或删除
+  function changeBackground(event) {
+    // 已弃用
+  }
+</script>
+</body>
+
+</html>

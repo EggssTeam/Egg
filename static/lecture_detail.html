@@ -1,0 +1,81 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>演讲详情</title>
+</head>
+<body>
+    <h1>演讲详情</h1>
+    <div id="lecture-info">加载中...</div>
+
+    <!-- 上传 PDF 部分 -->
+    <hr>
+    <h2>上传 PDF 生成选择题</h2>
+    <input type="file" id="pdfFile">
+    <button onclick="uploadPDF()">上传 PDF 并生成问题</button>
+
+    <p id="uploadStatus"></p>
+
+    <script>
+        // 从 URL 获取 lecture_id 参数
+        const params = new URLSearchParams(window.location.search);
+        const lectureId = params.get("id");
+
+        const lectureInfoDiv = document.getElementById("lecture-info");
+
+        if (!lectureId) {
+            lectureInfoDiv.textContent = "无效的演讲ID";
+        } else {
+            // 请求后端接口获取演讲信息
+            fetch(`/lecture/${lectureId}`)
+                .then(res => {
+                    if (!res.ok) throw new Error("演讲未找到");
+                    return res.json();
+                })
+                .then(lecture => {
+                    lectureInfoDiv.innerHTML = `
+                        <p><strong>主题：</strong>${lecture.topic}</p>
+                        <p><strong>开始时间：</strong>${lecture.start_time}</p>
+                        <p><strong>持续时间：</strong>${lecture.duration} 分钟</p>
+                        <p><strong>简介：</strong>${lecture.description}</p>
+                        <p><strong>演讲者ID：</strong>${lecture.speaker_id}</p>
+                        <p><strong>组织者ID：</strong>${lecture.organizer_id}</p>
+                        <p><strong>状态：</strong>${lecture.status}</p>
+                    `;
+                })
+                .catch(err => {
+                    lectureInfoDiv.textContent = "加载详情失败：" + err.message;
+                });
+        }
+
+        async function uploadPDF() {
+            const fileInput = document.getElementById("pdfFile");
+            const file = fileInput.files[0];
+            if (!file) {
+                alert("请先选择一个 PDF 文件！");
+                return;
+            }
+            const formData = new FormData();
+            formData.append("file", file);
+            formData.append("lecture_id", lectureId);
+
+            try {
+                const response = await fetch("/upload_pdf", {
+                    method: "POST",
+                    body: formData
+                });
+                const result = await response.json();
+                if (response.ok) {
+                    document.getElementById("uploadStatus").innerText =
+                        "上传成功！已生成选择题：" + JSON.stringify(result.qa, null, 2);
+                } else {
+                    document.getElementById("uploadStatus").innerText =
+                        "上传失败：" + result.error;
+                }
+            } catch (err) {
+                document.getElementById("uploadStatus").innerText =
+                    "请求出错：" + err.message;
+            }
+        }
+    </script>
+</body>
+</html>

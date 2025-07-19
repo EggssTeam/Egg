@@ -60,10 +60,10 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
 @user_router.post("/register")
 async def register(user: UserCreate):
     if user_collection.find_one({"username": user.username}):
-        raise HTTPException(status_code=400, detail="Username already taken")
+        raise HTTPException(status_code=400, detail="用户名已被使用")
 
     if user_collection.find_one({"email": user.email}):
-        raise HTTPException(status_code=400, detail="Email already registered")
+        raise HTTPException(status_code=400, detail="邮箱已被注册")
 
     hashed_password = hash_password(user.password)
 

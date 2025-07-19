@@ -2,7 +2,8 @@ from wsgiref.validate import validator
 
 from fastapi import FastAPI, UploadFile, HTTPException, Form, Body
 from fastapi.responses import HTMLResponse, FileResponse
-from fastapi.templating import Jinja2Templates
+# from fastapi.templating import Jinja2Templates
+# from templates import templates
 from fastapi.requests import Request
 from pymongo import MongoClient
 from starlette.responses import RedirectResponse
@@ -39,11 +40,15 @@ import re
 
 from lecture import lecture_router
 from user import user_router, verify_password
+from question import question_router
+from fastapi.staticfiles import StaticFiles
+
+
 
 app = FastAPI()
 
 # 设置模板路径
-templates = Jinja2Templates(directory="templates")
+# templates = Jinja2Templates(directory="templates")
 
 # # MongoDB 配置
 # client = MongoClient("mongodb://localhost:27017/")
@@ -52,30 +57,49 @@ templates = Jinja2Templates(directory="templates")
 # user_collection = db["user"]
 
 
+app.include_router(question_router, prefix="/question", tags=["Question"])
+
 
 # 加载路由
 app.include_router(user_router, prefix="/user", tags=["User"])
 app.include_router(lecture_router, prefix="/lecture", tags=["Lecture"])
 
+#
+# app.mount("/", StaticFiles(directory="static", html=True), name="static")
+
+app.mount("/static", StaticFiles(directory="static", html=True), name="static")
 
 # 新的初始页面 / ，可以返回一个新的 HTML 文件，例如：home.html
 # @app.get("/", response_class=HTMLResponse)
 # async def get_home():
 #     return FileResponse("templates/login.html")  # 这是你设置的新初始界面
 
-# 设置登录页面
-@app.get("/", response_class=HTMLResponse)
-async def login_page(request: Request):
-    return templates.TemplateResponse("login.html", {"request": request})
+# 把 static 文件夹挂载到 /lecture_list 路径下，且html文件默认访问 lecture_list.html
+# app.mount("/lecture_list", StaticFiles(directory="static", html=True), name="lecture_list")
+#
+# @app.get("/lecture_list")
+# async def lecture_list():
+#     return FileResponse("static/lecture_list.html")
+#
+# @app.get("/lecture_detail.html")
+# async def lecture_detail():
+#     return FileResponse("static/lecture_detail.html")
 
-@app.get("/personal", response_class=HTMLResponse)
-async def login_page(request: Request):
-    return templates.TemplateResponse("personal.html", {"request": request})
-
-
-@app.get("/register", response_class=HTMLResponse)
-async def login_page(request: Request):
-    return templates.TemplateResponse("register.html", {"request": request})
+#
+#
+# # 设置登录页面
+# @app.get("/", response_class=HTMLResponse)
+# async def login_page(request: Request):
+#     return templates.TemplateResponse("login.html", {"request": request})
+#
+# @app.get("/personal", response_class=HTMLResponse)
+# async def login_page(request: Request):
+#     return templates.TemplateResponse("personal.html", {"request": request})
+#
+#
+# @app.get("/register", response_class=HTMLResponse)
+# async def login_page(request: Request):
+#     return templates.TemplateResponse("register.html", {"request": request})
 
 # 处理登录接口，使用 Body 来接收 JSON 格式数据
 # @app.post("/login")
@@ -86,96 +110,11 @@ async def login_page(request: Request):
 #     if email == "user@example.com" and password == "password123":
 #         return RedirectResponse(url="/index", status_code=303)
 #     raise HTTPException(status_code=401, detail="Invalid credentials")
-
-# 路由：主页
-@app.get("/index", response_class=HTMLResponse)
-async def get_index():
-    return FileResponse("templates/index.html")
-
-
-# 将 ObjectId 转为字符串（为了 JSON 传输）
-def objectid_to_str(obj):
-    return str(obj['_id'])
-
-# 路由：主页，获取所有问题
-@app.get("/question", response_class=HTMLResponse)
-async def get_questions(request: Request):
-    try:
-        questions = list(collection.find())  # 获取所有文档
-        # 格式化问题列表
-        formatted_questions = []
-        for q in questions:
-            formatted_questions.append({
-                "id": objectid_to_str(q),
-                "question": q.get("question", "未提供问题"),
-                "options": q.get("options", {}),
-                "correct_answer": q.get("correct_answer", "未提供正确答案")
-            })
-
-        # 渲染 HTML 页面并传递问题数据
-        return templates.TemplateResponse("question.html", {
-            "request": request,
-            "questions": formatted_questions
-        })
-    except Exception as e:
-        # 错误处理
-        return HTMLResponse(content=f"发生错误: {e}", status_code=500)
-
-# 定义问题模型
-class QuestionUpdate(BaseModel):
-    question: str
-    options: Dict[str, str]
-    correct_answer: str
-
-
-# 更新问题 API
-@app.put("/question/{id}")
-async def update_question(id: str, question: QuestionUpdate):
-    try:
-        # 确保提供的ID是有效的ObjectId格式
-        if not ObjectId.is_valid(id):
-            raise HTTPException(status_code=400, detail="Invalid ObjectId")
-
-        # 查询问题是否存在
-        existing_question = collection.find_one({"_id": ObjectId(id)})
-        if not existing_question:
-            raise HTTPException(status_code=404, detail="Question not found")
-
-        # 更新问题
-        updated_data = {
-            "question": question.question,
-            "options": question.options,
-            "correct_answer": question.correct_answer,
-        }
-
-        # 执行更新操作
-        collection.update_one({"_id": ObjectId(id)}, {"$set": updated_data})
-
-        return JSONResponse(status_code=200, content={"message": "Question updated successfully"})
-
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Internal Server Error: {str(e)}")
-
-# 删除问题 API
-@app.delete("/question/{id}")
-async def delete_question(id: str):
-    try:
-        # 确保提供的ID是有效的ObjectId格式
-        if not ObjectId.is_valid(id):
-            raise HTTPException(status_code=400, detail="Invalid ObjectId")
-
-        # 查询问题是否存在
-        existing_question = collection.find_one({"_id": ObjectId(id)})
-        if not existing_question:
-            raise HTTPException(status_code=404, detail="Question not found")
-
-        # 执行删除操作
-        collection.delete_one({"_id": ObjectId(id)})
-
-        return JSONResponse(status_code=200, content={"message": "Question deleted successfully"})
-
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"Internal Server Error: {str(e)}")
+#
+# # 路由：主页
+# @app.get("/index", response_class=HTMLResponse)
+# async def get_index():
+#     return FileResponse("templates/person.html")
 
 
 # 路由：上传文件并调用 DeepSeek API 生成选择题
@@ -216,18 +155,61 @@ async def upload_file(file: UploadFile):
     except Exception as e:
         return {"error": f"处理失败: {str(e)}"}
 
+    import io
+    from fastapi.responses import JSONResponse
+    from pdfminer.high_level import extract_text
+#
+# @app.post("/upload_pdf")
+# async def upload_pdf(file: UploadFile):
+#     try:
+#         content = await file.read()
+#
+#         pdf_stream = io.BytesIO(content)
+#
+#         text = extract_text(pdf_stream)
+#         if not text.strip():
+#             raise ValueError("PDF文本提取为空")
+#
+#         questions = generate_questions(text)
+#         if not questions:
+#             raise ValueError("生成的选择题为空，请检查输入文本或API响应")
+#
+#         documents = []
+#         for q in questions:
+#             documents.append({
+#                 "filename": file.filename,
+#                 "question": q["question"],
+#                 "options": q["options"],
+#                 "correct_answer": q["correct_answer"],
+#                 "source": "DeepSeek API",
+#                 "created_at": datetime.now()
+#             })
+#
+#         if documents:
+#             collection.insert_many(documents)
+#
+#         return {"message": "处理成功，选择题已存入数据库", "qa": questions}
+#
+#     except Exception as e:
+#         print(f"/upload_pdf 出错: {e}")
+#         return JSONResponse(content={"error": f"处理失败: {str(e)}"}, status_code=500)
+
+
+from fastapi import UploadFile, File, Form
 
 @app.post("/upload_pdf")
-async def upload_pdf(file: UploadFile):
+async def upload_pdf(
+    file: UploadFile = File(...),
+    lecture_id: str = Form(...)  # 添加这个参数
+):
     try:
-        # 直接在内存中创建BytesIO对象
         content = await file.read()
         pdf_stream = io.BytesIO(content)
 
-        # 从内存中提取文本
         text = extract_text(pdf_stream)
+        if not text.strip():
+            raise ValueError("PDF文本提取为空")
 
-        # 调用 DeepSeek API
         questions = generate_questions(text)
         if not questions:
             raise ValueError("生成的选择题为空，请检查输入文本或API响应")
@@ -236,6 +218,7 @@ async def upload_pdf(file: UploadFile):
         for q in questions:
             documents.append({
                 "filename": file.filename,
+                "lecture_id": lecture_id,  # 加入 lecture_id
                 "question": q["question"],
                 "options": q["options"],
                 "correct_answer": q["correct_answer"],
@@ -249,6 +232,7 @@ async def upload_pdf(file: UploadFile):
         return {"message": "处理成功，选择题已存入数据库", "qa": questions}
 
     except Exception as e:
+        print(f"/upload_pdf 出错: {e}")
         return JSONResponse(content={"error": f"处理失败: {str(e)}"}, status_code=500)
 
 
@@ -299,22 +283,6 @@ async def upload_file_local(file: UploadFile):
         raise he  # 直接传递已处理的HTTP异常
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"服务器错误: {str(e)}")
-
-# 路由：从 MongoDB 获取最新问题
-@app.get("/get_question")
-async def get_question():
-    try:
-        # 从 MongoDB 中获取最新的一条问题数据
-        question_data = collection.find_one({}, sort=[('_id', -1)])  # 按照 _id 排序，获取最新的
-        if question_data:
-            # 返回问题内容（去掉 _id）
-            question_data["_id"] = str(question_data["_id"])  # 转换 _id 为字符串以便 JSON 序列化
-            return question_data
-        else:
-            return {"error": "没有问题数据"}
-    except Exception as e:
-        return {"error": f"查询失败: {str(e)}"}
-
 
 # https://api.openai.com/v1/audio/transcriptions
 

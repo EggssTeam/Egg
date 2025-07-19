@@ -1,3 +1,183 @@
+<!--<!DOCTYPE html>-->
+<!--<html lang="zh-CN">-->
+<!--<head>-->
+<!--    <meta charset="UTF-8" />-->
+<!--    <meta name="viewport" content="width=device-width, initial-scale=1" />-->
+<!--    <title>登录页面</title>-->
+<!--    <style>-->
+<!--        body {-->
+<!--            font-family: Arial, sans-serif;-->
+<!--            background-color: #f4f4f9;-->
+<!--            display: flex;-->
+<!--            justify-content: center;-->
+<!--            align-items: center;-->
+<!--            height: 100vh;-->
+<!--            margin: 0;-->
+<!--        }-->
+<!--        .container {-->
+<!--            background: #fff;-->
+<!--            padding: 30px;-->
+<!--            border-radius: 8px;-->
+<!--            box-shadow: 0 4px 6px rgba(0,0,0,0.1);-->
+<!--            width: 320px;-->
+<!--            text-align: center;-->
+<!--        }-->
+<!--        h2 {-->
+<!--            margin-bottom: 20px;-->
+<!--            color: #333;-->
+<!--        }-->
+<!--        form {-->
+<!--            display: flex;-->
+<!--            flex-direction: column;-->
+<!--            align-items: stretch;-->
+<!--        }-->
+<!--        label {-->
+<!--            text-align: left;-->
+<!--            margin-bottom: 5px;-->
+<!--            font-size: 14px;-->
+<!--        }-->
+<!--        input {-->
+<!--            margin-bottom: 15px;-->
+<!--            padding: 10px;-->
+<!--            font-size: 14px;-->
+<!--            border: 1px solid #ddd;-->
+<!--            border-radius: 5px;-->
+<!--        }-->
+<!--        button {-->
+<!--            background-color: #4CAF50;-->
+<!--            color: white;-->
+<!--            padding: 10px;-->
+<!--            font-size: 16px;-->
+<!--            border: none;-->
+<!--            border-radius: 5px;-->
+<!--            cursor: pointer;-->
+<!--            transition: background-color 0.3s ease;-->
+<!--        }-->
+<!--        button:hover {-->
+<!--            background-color: #45a049;-->
+<!--        }-->
+<!--        #error-message {-->
+<!--            margin-top: 15px;-->
+<!--            font-size: 14px;-->
+<!--            color: red;-->
+<!--            display: none;-->
+<!--        }-->
+<!--        p {-->
+<!--            margin-top: 15px;-->
+<!--        }-->
+<!--        a {-->
+<!--            color: #4CAF50;-->
+<!--            text-decoration: none;-->
+<!--        }-->
+<!--        a:hover {-->
+<!--            text-decoration: underline;-->
+<!--        }-->
+<!--    </style>-->
+<!--</head>-->
+<!--<body>-->
+
+<!--<div class="container">-->
+<!--    <h2>登录</h2>-->
+
+<!--    <form id="loginForm" onsubmit="event.preventDefault(); login();">-->
+<!--        <div>-->
+<!--            <label for="email">邮箱：</label>-->
+<!--            <input type="email" id="email" name="email" required placeholder="请输入邮箱" />-->
+<!--        </div>-->
+
+<!--        <div>-->
+<!--            <label for="password">密码：</label>-->
+<!--            <input type="password" id="password" name="password" required placeholder="请输入密码" />-->
+<!--        </div>-->
+
+<!--        <button type="submit">登录</button>-->
+<!--    </form>-->
+
+<!--    <div id="error-message"></div>-->
+
+<!--    <p>还没有账号？<a href="/static/register.html">去注册</a></p>-->
+<!--</div>-->
+
+<!--<script>-->
+<!--    // async function login() {-->
+<!--    //     const errorMessage = document.getElementById("error-message");-->
+<!--    //     errorMessage.style.display = "none";-->
+<!--    //     errorMessage.textContent = "";-->
+<!--    //-->
+<!--    //     const email = document.getElementById("email").value.trim();-->
+<!--    //     const password = document.getElementById("password").value;-->
+<!--    //-->
+<!--    //     if (!email || !password) {-->
+<!--    //         errorMessage.textContent = "请填写邮箱和密码。";-->
+<!--    //         errorMessage.style.display = "block";-->
+<!--    //         return;-->
+<!--    //     }-->
+<!--    //-->
+<!--    //     try {-->
+<!--    //         const response = await fetch("http://127.0.0.1:8000/user/login", {-->
+<!--    //             method: "POST",-->
+<!--    //             headers: { "Content-Type": "application/json" },-->
+<!--    //             body: JSON.stringify({ email, password }),-->
+<!--    //         });-->
+<!--    //-->
+<!--    //         const data = await response.json();-->
+<!--    //-->
+<!--    //         if (response.ok) {-->
+<!--    //             // 登录成功，跳转到首页或仪表盘-->
+<!--    //             // window.location.href = "person.html";-->
+<!--    //             window.location.href = `person.html?email=${encodeURIComponent(email)}`;-->
+<!--    //-->
+<!--    //         } else {-->
+<!--    //             errorMessage.textContent = data.detail || "登录失败，请检查邮箱和密码。";-->
+<!--    //             errorMessage.style.display = "block";-->
+<!--    //         }-->
+<!--    //     } catch (err) {-->
+<!--    //         errorMessage.textContent = "请求异常：" + err.message;-->
+<!--    //         errorMessage.style.display = "block";-->
+<!--    //     }-->
+<!--    // }-->
+
+<!--    async function login() {-->
+<!--  const errorMessage = document.getElementById("error-message");-->
+<!--  errorMessage.style.display = "none";-->
+<!--  errorMessage.textContent = "";-->
+
+<!--  const email = document.getElementById("email").value.trim();-->
+<!--  const password = document.getElementById("password").value;-->
+
+<!--  if (!email || !password) {-->
+<!--    errorMessage.textContent = "请填写邮箱和密码。";-->
+<!--    errorMessage.style.display = "block";-->
+<!--    return;-->
+<!--  }-->
+
+<!--  try {-->
+<!--    const response = await fetch("http://127.0.0.1:8000/user/login", {-->
+<!--      method: "POST",-->
+<!--      headers: { "Content-Type": "application/json" },-->
+<!--      body: JSON.stringify({ email, password }),-->
+<!--    });-->
+
+<!--    const data = await response.json();-->
+
+<!--    if (response.ok) {-->
+<!--      // 使用 data.user.id 传递用户 id-->
+<!--      window.location.href = `person.html?id=${encodeURIComponent(data.user.id)}`;-->
+<!--      sessionStorage.setItem("userId", data.user.id);-->
+<!--    } else {-->
+<!--      errorMessage.textContent = data.detail || "登录失败，请检查邮箱和密码。";-->
+<!--      errorMessage.style.display = "block";-->
+<!--    }-->
+<!--  } catch (err) {-->
+<!--    errorMessage.textContent = "请求异常：" + err.message;-->
+<!--    errorMessage.style.display = "block";-->
+<!--  }-->
+<!--}-->
+
+<!--</script>-->
+
+<!--</body>-->
+<!--</html>-->
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
@@ -21,6 +201,7 @@
             box-shadow: 0 4px 6px rgba(0,0,0,0.1);
             width: 320px;
             text-align: center;
+            position: relative;
         }
         h2 {
             margin-bottom: 20px;
@@ -42,6 +223,10 @@
             font-size: 14px;
             border: 1px solid #ddd;
             border-radius: 5px;
+            transition: border 0.3s ease;
+        }
+        input.error {
+            border-color: red;
         }
         button {
             background-color: #4CAF50;
@@ -72,11 +257,49 @@
         a:hover {
             text-decoration: underline;
         }
+
+        /* 小拇指和艺术字同一行 */
+        .header-row {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .thumb-icon {
+            font-size: 50px;
+            color: #FFD700;  /* 金色 */
+            margin-right: 10px;
+        }
+
+        .artistic-font {
+            font-size: 28px;
+            font-family: 'Brush Script MT', cursive;
+            color: #4CAF50;
+        }
+
+        /* 半隐藏的Logo */
+        .logo {
+            position: fixed;
+            bottom: 10px;
+            right: 10px;
+            opacity: 0.5;
+            z-index: 999;
+            font-size: 30px;
+            font-family: 'Brush Script MT', cursive;
+            color: #4CAF50;
+        }
     </style>
 </head>
 <body>
 
 <div class="container">
+    <!-- 小拇指和艺术字同一行 -->
+    <div class="header-row">
+        <div class="thumb-icon">👍</div>
+        <div class="artistic-font">Eggssteam</div>
+    </div>
+
     <h2>登录</h2>
 
     <form id="loginForm" onsubmit="event.preventDefault(); login();">
@@ -95,47 +318,60 @@
 
     <div id="error-message"></div>
 
-    <p>还没有账号？<a href="/static/register.html">去注册</a></p>
+    <p>还没有账号？<a href="register.html">去注册</a></p>
 </div>
+
+<!-- Eggssteam Logo -->
+<div class="logo">Eggssteam</div>
 
 <script>
     async function login() {
-        const errorMessage = document.getElementById("error-message");
-        errorMessage.style.display = "none";
-        errorMessage.textContent = "";
+  const errorMessage = document.getElementById("error-message");
+  errorMessage.style.display = "none";
+  errorMessage.textContent = "";
 
-        const email = document.getElementById("email").value.trim();
-        const password = document.getElementById("password").value;
+  const emailInput = document.getElementById("email");
+  const passwordInput = document.getElementById("password");
+  const email = emailInput.value.trim();
+  const password = passwordInput.value;
 
-        if (!email || !password) {
-            errorMessage.textContent = "请填写邮箱和密码。";
-            errorMessage.style.display = "block";
-            return;
-        }
+  // 输入检查
+  if (!email || !password) {
+    errorMessage.textContent = "请填写邮箱和密码。";
+    errorMessage.style.display = "block";
+    if (!email) emailInput.classList.add("error");
+    if (!password) passwordInput.classList.add("error");
+    return;
+  } else {
+    emailInput.classList.remove("error");
+    passwordInput.classList.remove("error");
+  }
 
-        try {
-            const response = await fetch("http://127.0.0.1:8000/user/login", {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ email, password }),
-            });
+  try {
+    const response = await fetch("http://127.0.0.1:8000/user/login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email, password }),
+    });
 
-            const data = await response.json();
+    const data = await response.json();
 
-            if (response.ok) {
-                // 登录成功，跳转到首页或仪表盘
-                // window.location.href = "person.html";
-                window.location.href = `person.html?email=${encodeURIComponent(email)}`;
-
-            } else {
-                errorMessage.textContent = data.detail || "登录失败，请检查邮箱和密码。";
-                errorMessage.style.display = "block";
-            }
-        } catch (err) {
-            errorMessage.textContent = "请求异常：" + err.message;
-            errorMessage.style.display = "block";
-        }
+    if (response.ok) {
+      // 登录成功，保存 userId，并跳转到 person.html（用 id 传参）
+      sessionStorage.setItem("userId", data.user.id);
+      window.location.href = `person.html?id=${encodeURIComponent(data.user.id)}`;
+    } else {
+      errorMessage.textContent = data.detail || "登录失败，请检查邮箱和密码。";
+      errorMessage.style.display = "block";
+      emailInput.classList.add("error");
+      passwordInput.classList.add("error");
     }
+  } catch (err) {
+    errorMessage.textContent = "请求异常：" + err.message;
+    errorMessage.style.display = "block";
+  }
+}
+
 </script>
 
 </body>

@@ -1,84 +1,189 @@
+<!--<!DOCTYPE html>-->
+<!--<html lang="en">-->
+<!--<head>-->
+<!--    <meta charset="UTF-8">-->
+<!--    <meta name="viewport" content="width=device-width, initial-scale=1.0">-->
+<!--    <title>Register Page</title>-->
+<!--</head>-->
+<!--<body>-->
+
+<!--    <div class="container">-->
+<!--        <h2>Register</h2>-->
+
+<!--        <form id="registerForm" onsubmit="event.preventDefault(); register();">-->
+<!--            <div>-->
+<!--                <label for="username">Username:</label>-->
+<!--                <input type="text" id="username" name="username" required placeholder="Enter your username">-->
+<!--            </div>-->
+
+<!--            <div>-->
+<!--                <label for="email">Email:</label>-->
+<!--                <input type="email" id="email" name="email" required placeholder="Enter your email">-->
+<!--            </div>-->
+
+<!--            <div>-->
+<!--                <label for="password">Password:</label>-->
+<!--                <input type="password" id="password" name="password" required placeholder="Enter your password">-->
+<!--            </div>-->
+
+<!--            <div>-->
+<!--                <label for="confirmPassword">Confirm Password:</label>-->
+<!--                <input type="password" id="confirmPassword" name="confirmPassword" required placeholder="Confirm your password">-->
+<!--            </div>-->
+
+<!--            <button type="submit">Register</button>-->
+<!--        </form>-->
+
+<!--        <div id="error-message" style="display:none; color: red;"></div>-->
+
+<!--        &lt;!&ndash; 去登录的链接 &ndash;&gt;-->
+<!--        <p>Already have an account? <a href="/static/login.html">Login here</a></p>-->
+
+<!--    </div>-->
+
+<!--    <script>-->
+<!--        async function register() {-->
+<!--            const username = document.getElementById("username").value;-->
+<!--            const email = document.getElementById("email").value;-->
+<!--            const password = document.getElementById("password").value;-->
+<!--            const confirmPassword = document.getElementById("confirmPassword").value;-->
+
+<!--            if (password !== confirmPassword) {-->
+<!--                const errorMessage = document.getElementById("error-message");-->
+<!--                errorMessage.textContent = "Passwords do not match";-->
+<!--                errorMessage.style.display = "block";-->
+<!--                return;-->
+<!--            }-->
+
+<!--            const response = await fetch("http://127.0.0.1:8000/user/register", {-->
+<!--                method: "POST",-->
+<!--                headers: {-->
+<!--                    "Content-Type": "application/json"-->
+<!--                },-->
+<!--                body: JSON.stringify({ username: username, email: email, password: password, role: 1 }) // Add a default role here-->
+<!--            });-->
+
+<!--            const data = await response.json();-->
+
+<!--            if (response.ok) {-->
+<!--                // If registration is successful, redirect to login-->
+<!--                window.location.href = "/static/login.html";  // 或者直接用 RedirectResponse 来跳转-->
+<!--            } else {-->
+<!--                // Display error message-->
+<!--                const errorMessage = document.getElementById("error-message");-->
+<!--                errorMessage.textContent = data.detail || "Registration failed";-->
+<!--                errorMessage.style.display = "block";-->
+<!--            }-->
+<!--        }-->
+<!--    </script>-->
+
+<!--    &lt;!&ndash; Styles &ndash;&gt;-->
+<!--    <style>-->
+<!--        body {-->
+<!--            font-family: Arial, sans-serif;-->
+<!--            background-color: #f4f4f9;-->
+<!--            display: flex;-->
+<!--            justify-content: center;-->
+<!--            align-items: center;-->
+<!--            height: 100vh;-->
+<!--            margin: 0;-->
+<!--        }-->
+
+<!--        .container {-->
+<!--            background: #ffffff;-->
+<!--            padding: 30px;-->
+<!--            border-radius: 8px;-->
+<!--            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);-->
+<!--            width: 300px;-->
+<!--            text-align: center;-->
+<!--        }-->
+
+<!--        h2 {-->
+<!--            margin-bottom: 20px;-->
+<!--            color: #333;-->
+<!--        }-->
+
+<!--        form {-->
+<!--            display: flex;-->
+<!--            flex-direction: column;-->
+<!--        }-->
+
+<!--        label {-->
+<!--            text-align: left;-->
+<!--            margin-bottom: 5px;-->
+<!--            font-size: 14px;-->
+<!--        }-->
+
+<!--        input {-->
+<!--            margin-bottom: 15px;-->
+<!--            padding: 10px;-->
+<!--            font-size: 14px;-->
+<!--            border: 1px solid #ddd;-->
+<!--            border-radius: 5px;-->
+<!--        }-->
+
+<!--        button {-->
+<!--            background-color: #4CAF50;-->
+<!--            color: white;-->
+<!--            padding: 10px;-->
+<!--            font-size: 16px;-->
+<!--            border: none;-->
+<!--            border-radius: 5px;-->
+<!--            cursor: pointer;-->
+<!--            transition: background-color 0.3s ease;-->
+<!--        }-->
+
+<!--        button:hover {-->
+<!--            background-color: #45a049;-->
+<!--        }-->
+
+<!--        #error-message {-->
+<!--            margin-top: 15px;-->
+<!--            font-size: 14px;-->
+<!--            color: red;-->
+<!--        }-->
+
+<!--        p {-->
+<!--            margin-top: 15px;-->
+<!--        }-->
+
+<!--        a {-->
+<!--            color: #4CAF50;-->
+<!--            text-decoration: none;-->
+<!--        }-->
+
+<!--        a:hover {-->
+<!--            text-decoration: underline;-->
+<!--        }-->
+<!--    </style>-->
+
+<!--</body>-->
+<!--</html>-->
+
+
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Register Page</title>
-</head>
-<body>
-
-    <div class="container">
-        <h2>Register</h2>
-
-        <form id="registerForm" onsubmit="event.preventDefault(); register();">
-            <div>
-                <label for="username">Username:</label>
-                <input type="text" id="username" name="username" required placeholder="Enter your username">
-            </div>
-
-            <div>
-                <label for="email">Email:</label>
-                <input type="email" id="email" name="email" required placeholder="Enter your email">
-            </div>
-
-            <div>
-                <label for="password">Password:</label>
-                <input type="password" id="password" name="password" required placeholder="Enter your password">
-            </div>
-
-            <div>
-                <label for="confirmPassword">Confirm Password:</label>
-                <input type="password" id="confirmPassword" name="confirmPassword" required placeholder="Confirm your password">
-            </div>
-
-            <button type="submit">Register</button>
-        </form>
-
-        <div id="error-message" style="display:none; color: red;"></div>
-
-        <!-- 去登录的链接 -->
-        <p>Already have an account? <a href="/static/login.html">Login here</a></p>
-
-    </div>
-
-    <script>
-        async function register() {
-            const username = document.getElementById("username").value;
-            const email = document.getElementById("email").value;
-            const password = document.getElementById("password").value;
-            const confirmPassword = document.getElementById("confirmPassword").value;
-
-            if (password !== confirmPassword) {
-                const errorMessage = document.getElementById("error-message");
-                errorMessage.textContent = "Passwords do not match";
-                errorMessage.style.display = "block";
-                return;
-            }
-
-            const response = await fetch("http://127.0.0.1:8000/user/register", {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify({ username: username, email: email, password: password, role: 1 }) // Add a default role here
-            });
-
-            const data = await response.json();
-
-            if (response.ok) {
-                // If registration is successful, redirect to login
-                window.location.href = "/static/login.html";  // 或者直接用 RedirectResponse 来跳转
-            } else {
-                // Display error message
-                const errorMessage = document.getElementById("error-message");
-                errorMessage.textContent = data.detail || "Registration failed";
-                errorMessage.style.display = "block";
-            }
-        }
-    </script>
-
-    <!-- Styles -->
+    <title>注册页面</title>
+    <link rel="stylesheet" href="https://unpkg.com/element-ui@2.15.9/lib/theme-chalk/index.css">
+    <script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.js"></script>
+    <script src="https://unpkg.com/element-ui@2.15.9/lib/index.js"></script>
     <style>
+        /* 背景图案修饰 */
+        .header-image {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 150px;
+            background: url('https://via.placeholder.com/1500x150') no-repeat center center;
+            background-size: cover;
+            z-index: -1;
+        }
+
+        /* 页面主体 */
         body {
             font-family: Arial, sans-serif;
             background-color: #f4f4f9;
@@ -87,15 +192,17 @@
             align-items: center;
             height: 100vh;
             margin: 0;
+            position: relative;
         }
 
         .container {
             background: #ffffff;
-            padding: 30px;
+            padding: 50px 30px;
             border-radius: 8px;
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            width: 300px;
+            width: 350px;  /* 增大了宽度 */
             text-align: center;
+            overflow: hidden;
         }
 
         h2 {
@@ -120,27 +227,7 @@
             font-size: 14px;
             border: 1px solid #ddd;
             border-radius: 5px;
-        }
-
-        button {
-            background-color: #4CAF50;
-            color: white;
-            padding: 10px;
-            font-size: 16px;
-            border: none;
-            border-radius: 5px;
-            cursor: pointer;
-            transition: background-color 0.3s ease;
-        }
-
-        button:hover {
-            background-color: #45a049;
-        }
-
-        #error-message {
-            margin-top: 15px;
-            font-size: 14px;
-            color: red;
+            transition: border 0.3s ease;
         }
 
         p {
@@ -155,7 +242,148 @@
         a:hover {
             text-decoration: underline;
         }
+
+        /* 小星星和艺术字同一行 */
+        .header-row {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .star-icon {
+            font-size: 50px;
+            color: #FFD700;  /* 金色 */
+            margin-right: 10px;
+        }
+
+        .artistic-font {
+            font-size: 28px;
+            font-family: 'Brush Script MT', cursive;
+            color: #4CAF50;
+        }
+
+        /* 半隐藏的Logo */
+        .logo {
+            position: fixed;
+            bottom: 10px;
+            right: 10px;
+            opacity: 0.5;
+            z-index: 999;
+            font-size: 30px;
+            font-family: 'Brush Script MT', cursive;
+            color: #4CAF50;
+        }
+
     </style>
+</head>
+<body>
+
+    <!-- 背景图案 -->
+    <div class="header-image"></div>
+
+    <div id="app" class="container">
+        <!-- 小星星和艺术字同一行 -->
+        <div class="header-row">
+            <div class="star-icon">★</div>
+            <div class="artistic-font">Eggssteam</div>
+        </div>
+
+        <h2>注册</h2>
+
+        <el-form ref="registerForm" :model="form" label-width="80px">
+            <el-form-item label="用户名" :rules="[{ required: true, message: '请输入用户名', trigger: 'blur' }]">
+                <el-input v-model="form.username" placeholder="请输入用户名"></el-input>
+            </el-form-item>
+
+            <el-form-item label="邮箱" :rules="[{ type: 'email', message: '请输入正确的邮箱地址', trigger: 'blur' }]">
+                <el-input v-model="form.email" placeholder="请输入邮箱"></el-input>
+            </el-form-item>
+
+            <el-form-item label="密码" :rules="[{ required: true, message: '请输入密码', trigger: 'blur' }]">
+                <el-input type="password" v-model="form.password" placeholder="请输入密码"></el-input>
+            </el-form-item>
+
+            <el-form-item label="确认密码" :rules="[{ required: true, message: '请确认密码', trigger: 'blur' }]">
+                <el-input type="password" v-model="form.confirmPassword" placeholder="确认密码"></el-input>
+            </el-form-item>
+
+            <el-button type="success" size="small" @click="register">注册</el-button>
+        </el-form>
+
+        <p>已有账号？ <a href="login.html">点击登录</a></p>
+    </div>
+
+    <!-- Eggssteam Logo -->
+    <div class="logo">Eggssteam</div>
+
+    <script>
+        new Vue({
+            el: '#app',
+            data() {
+                return {
+                    form: {
+                        username: '',
+                        email: '',
+                        password: '',
+                        confirmPassword: ''
+                    }
+                };
+            },
+            methods: {
+                validateForm() {
+                    let isValid = true;
+                    if (this.form.username.trim() === "") {
+                        this.showError("用户名不能为空");
+                        isValid = false;
+                    } else if (!this.isValidEmail(this.form.email)) {
+                        this.showError("邮箱格式不正确");
+                        isValid = false;
+                    } else if (this.form.password.length < 6) {
+                        this.showError("密码必须至少包含6个字符");
+                        isValid = false;
+                    } else if (this.form.password !== this.form.confirmPassword) {
+                        this.showError("密码不匹配");
+                        isValid = false;
+                    }
+                    return isValid;
+                },
+                isValidEmail(email) {
+                    const pattern = /^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,4}$/;
+                    return pattern.test(email);
+                },
+                showError(message) {
+                    this.$message.error(message);
+                },
+                async register() {
+                    if (!this.validateForm()) {
+                        return;
+                    }
+
+                    const response = await fetch("http://127.0.0.1:8000/user/register", {
+                        method: "POST",
+                        headers: {
+                            "Content-Type": "application/json"
+                        },
+                        body: JSON.stringify({
+                            username: this.form.username,
+                            email: this.form.email,
+                            password: this.form.password,
+                            role: 1
+                        })
+                    });
+
+                    const data = await response.json();
+
+                    if (response.ok) {
+                        window.location.href = "login.html";
+                    } else {
+                        this.showError(data.detail || "注册失败");
+                    }
+                }
+            }
+        });
+    </script>
 
 </body>
 </html>

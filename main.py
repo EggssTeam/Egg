@@ -1,3 +1,4 @@
+import base64
 from wsgiref.validate import validator
 
 from fastapi import FastAPI, UploadFile, HTTPException, Form, Body
@@ -5,11 +6,12 @@ from fastapi.responses import HTMLResponse, FileResponse
 # from fastapi.templating import Jinja2Templates
 # from templates import templates
 from fastapi.requests import Request
+from pptx import Presentation
 from pymongo import MongoClient
 from starlette.responses import RedirectResponse
 
 from db import collection, user_collection
-from deepseek_client import generate_questions, pdf_to_text  # 调用 DeepSeek API 生成问题
+from deepseek_client import generate_questions, extract_text_from_file  # 调用 DeepSeek API 生成问题
 from deepseek_local_model import generate_questions_local  # 调用本地 DeepSeek 模型生成问题
 import uvicorn
 from datetime import datetime
@@ -38,6 +40,7 @@ from passlib.context import CryptContext
 from pymongo import MongoClient
 import re
 
+from invitation import invitation_router
 from lecture import lecture_router
 from user import user_router, verify_password
 from question import question_router
@@ -56,6 +59,7 @@ app = FastAPI()
 # collection = db["qa_collection"]
 # user_collection = db["user"]
 
+app.include_router(invitation_router, prefix="/invitation", tags=["invitation"])
 
 app.include_router(question_router, prefix="/question", tags=["Question"])
 
@@ -196,6 +200,53 @@ async def upload_file(file: UploadFile):
 
 
 from fastapi import UploadFile, File, Form
+
+
+
+
+
+
+@app.post("/upload_file")
+async def upload_file(
+    file: UploadFile = File(...),
+    lecture_id: str = Form(...)
+):
+    try:
+        # 提取文本（支持 PDF 和 PPTX）
+        text = extract_text_from_file(file)
+        if not text.strip():
+            raise ValueError("文件中未提取到文本内容")
+
+        # 生成选择题
+        questions = generate_questions(text)
+        if not questions:
+            raise ValueError("生成的选择题为空，请检查输入文本或API响应")
+
+        # 构造文档列表入库
+        documents = []
+        for q in questions:
+            documents.append({
+                "filename": file.filename,
+                "lecture_id": lecture_id,
+                "question": q["question"],
+                "options": q["options"],
+                "correct_answer": q["correct_answer"],
+                "source": "DeepSeek API",
+                "created_at": datetime.now()
+            })
+
+        if documents:
+            collection.insert_many(documents)
+
+        return {"message": "处理成功，选择题已存入数据库", "qa": questions}
+
+    except Exception as e:
+        print(f"/upload_file 出错: {e}")
+        return JSONResponse(content={"error": f"处理失败: {str(e)}"}, status_code=500)
+
+
+
+
 
 @app.post("/upload_pdf")
 async def upload_pdf(
@@ -437,6 +488,99 @@ async def analyze_file(file: UploadFile = File(...)):
         "filename": file.filename,
         "summary": summary_text
     }
+
+
+
+
+
+
+
+headers = {
+    "Authorization": f"Bearer {OPENAI_API_KEY}",
+    "Content-Type": "application/json"
+}
+
+
+def extract_images_from_pptx(file_bytes: bytes) -> list:
+    prs = Presentation(io.BytesIO(file_bytes))
+    image_list = []
+
+    for slide_num, slide in enumerate(prs.slides):
+        for shape in slide.shapes:
+            if shape.shape_type == 13:  # PICTURE
+                image = shape.image
+                image_bytes = image.blob
+                mime_type = image.content_type  # e.g., image/png
+
+                image_base64 = base64.b64encode(image_bytes).decode("utf-8")
+                image_list.append({
+                    "data": image_base64,
+                    "mime_type": mime_type,
+                    "slide": slide_num + 1
+                })
+
+    return image_list
+
+
+async def analyze_image_with_gpt4o(image_base64: str, mime_type: str) -> str:
+    payload = {
+        "model": "gpt-4o",
+        "messages": [
+            {
+                "role": "user",
+                "content": [
+                    {"type": "text", "text": "请分析这张幻灯片中的图像内容，并尽可能解释它表达了什么。"},
+                    {
+                        "type": "image_url",
+                        "image_url": {
+                            "url": f"data:{mime_type};base64,{image_base64}"
+                        }
+                    }
+                ]
+            }
+        ],
+        "temperature": 0.3
+    }
+
+    async with httpx.AsyncClient(timeout=60.0) as client:
+        response = await client.post(GPT4O_API_URL, headers=headers, json=payload)
+        response.raise_for_status()
+        result = response.json()
+
+    return result["choices"][0]["message"]["content"]
+
+
+@app.post("/analyze_pptx_images/")
+async def analyze_pptx_images(file: UploadFile = File(...)):
+    file_bytes = await file.read()
+    images = extract_images_from_pptx(file_bytes)
+
+    if not images:
+        return {"filename": file.filename, "message": "没有找到图片"}
+
+    results = []
+    for idx, image in enumerate(images):
+        try:
+            analysis = await analyze_image_with_gpt4o(image["data"], image["mime_type"])
+        except Exception as e:
+            analysis = f"分析失败: {str(e)}"
+
+        results.append({
+            "slide": image["slide"],
+            "result": analysis
+        })
+
+    return {
+        "filename": file.filename,
+        "total_images": len(images),
+        "results": results
+    }
+
+
+
+
+
+
 
 
 

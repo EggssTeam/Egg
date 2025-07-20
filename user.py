@@ -17,6 +17,7 @@ import os
 from fastapi import APIRouter, HTTPException, UploadFile, File, Form
 from typing import Optional
 
+from bson import ObjectId
 user_router = APIRouter()
 
 # 密码加密上下文
@@ -38,12 +39,6 @@ class UserCreate(BaseModel):
         return v
 
 
-# # Pydantic模型：用于修改信息的请求体（可选字段）
-# class UserUpdate(BaseModel):
-#     gender: Optional[int]
-#     age: Optional[int]
-#     avatar: Optional[str]
-#     motto: Optional[str]
 
 
 # 加密密码
@@ -85,14 +80,6 @@ class UserLogin(BaseModel):
     password: str
 
 
-# 登录接口
-# @user_router.post("/login")
-# async def login(user: UserLogin):
-#     db_user = user_collection.find_one({"email": user.email})
-#     if db_user is None or not verify_password(user.password, db_user["password"]):
-#         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
-#
-#     return {"message": "Login successful", "email": user.email}
 
 @user_router.post("/login")
 async def login(user: UserLogin):
@@ -114,51 +101,6 @@ async def login(user: UserLogin):
     }
 
 
-# @user_router.post("/login")
-# async def login(user: UserLogin):
-#     db_user = user_collection.find_one({"email": user.email})
-#     if db_user is None or not verify_password(user.password, db_user["password"]):
-#         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid credentials")
-#
-#     return {
-#         "message": "Login successful",
-#         "user": {
-#             "id": str(db_user["_id"]),
-#             "email": db_user["email"],
-#             "username": db_user.get("username", ""),
-#             "avatar": db_user.get("avatar", ""),
-#             "background": db_user.get("background", "")
-#         }
-#     }
-
-
-
-
-#
-# # 修改用户信息接口（根据邮箱定位用户）
-# @user_router.put("/update/{email}")
-# async def update_user(email: str, update_data: UserUpdate):
-#     db_user = user_collection.find_one({"email": email})
-#     if not db_user:
-#         raise HTTPException(status_code=404, detail="User not found")
-#
-#     update_dict = {k: v for k, v in update_data.dict().items() if v is not None}
-#     if not update_dict:
-#         raise HTTPException(status_code=400, detail="No valid fields to update")
-#
-#     user_collection.update_one({"email": email}, {"$set": update_dict})
-#
-#     return {"message": "User info updated", "updated_fields": list(update_dict.keys())}
-
-
-#
-# from fastapi import APIRouter, HTTPException, Body
-# from pydantic import BaseModel, EmailStr, validator
-# from typing import Optional
-# import re
-#
-# user_router = APIRouter()
-
 class UserUpdate(BaseModel):
     username: Optional[str] = None
     gender: Optional[int] = None
@@ -172,13 +114,18 @@ class UserUpdate(BaseModel):
         if v is not None and not v.strip():
             raise ValueError("用户名不能为空")
         return v
-#
-# @user_router.get("/{email}")
-# async def get_user(email: str):
-#     user = user_collection.find_one({"email": email}, {"_id": 0, "password": 0})
-#     if not user:
-#         raise HTTPException(status_code=404, detail="User not found")
-#     return user
+
+
+@user_router.get("/")
+async def get_all_users():
+    users_cursor = user_collection.find({}, {"password": 0})
+    users = []
+    for user in users_cursor:
+        user["id"] = str(user["_id"])
+        del user["_id"]
+        users.append(user)
+    return users
+
 
 @user_router.get("/{user_id}")
 async def get_user(user_id: str):
@@ -200,93 +147,12 @@ async def get_user(user_id: str):
 
 
 
-#
-#
-# @user_router.put("/update/{email}")
-# async def update_user(email: str, update_data: UserUpdate = Body(...)):
-#     db_user = user_collection.find_one({"email": email})
-#     if not db_user:
-#         raise HTTPException(status_code=404, detail="User not found")
-#
-#     update_dict = {k: v for k, v in update_data.dict().items() if v is not None}
-#     if not update_dict:
-#         raise HTTPException(status_code=400, detail="No valid fields to update")
-#
-#     # 校验用户名唯一性
-#     if "username" in update_dict:
-#         new_username = update_dict["username"]
-#         if new_username != db_user.get("username"):
-#             exists = user_collection.find_one({"username": new_username})
-#             if exists:
-#                 raise HTTPException(status_code=400, detail="用户名已被使用")
-#
-#     # 执行更新
-#     user_collection.update_one({"email": email}, {"$set": update_dict})
-#
-#     return {"message": "User info updated", "updated_fields": list(update_dict.keys())}
-
-
-
 UPLOAD_DIR = "static/uploads"  # 你存图片的目录
 
 if not os.path.exists(UPLOAD_DIR):
     os.makedirs(UPLOAD_DIR)
 
-# UPLOAD_FOLDER = "static/uploads"  # 本地保存头像的目录
-#
-# @user_router.put("/update/{email}")
-# async def update_user_with_avatar(
-#     email: str,
-#     username: str = Form(None),
-#     gender: int = Form(None),
-#     age: int = Form(None),
-#     motto: str = Form(None),
-#     avatar: UploadFile = File(None),
-# ):
-#     # 查找用户
-#     db_user = user_collection.find_one({"email": email})
-#     if not db_user:
-#         raise HTTPException(status_code=404, detail="User not found")
-#
-#     update_data = {}
-#
-#     if username:
-#         if username != db_user.get("username"):
-#             if user_collection.find_one({"username": username}):
-#                 raise HTTPException(status_code=400, detail="用户名已被使用")
-#         update_data["username"] = username
-#
-#     if gender is not None:
-#         update_data["gender"] = gender
-#
-#     if age is not None:
-#         update_data["age"] = age
-#
-#     if motto:
-#         update_data["motto"] = motto
-#
-#     # 处理头像上传
-#     if avatar:
-#         ext = os.path.splitext(avatar.filename)[1]  # e.g. .jpg
-#         filename = f"{uuid4().hex}{ext}"
-#         filepath = os.path.join(UPLOAD_DIR, filename)
-#         os.makedirs(UPLOAD_DIR, exist_ok=True)  # 确保文件夹存在
-#
-#         with open(filepath, "wb") as f:
-#             f.write(await avatar.read())
-#
-#         # 存储相对路径
-#         update_data["avatar"] = f"/static/uploads/{filename}"
-#
-#     if not update_data:
-#         raise HTTPException(status_code=400, detail="No valid fields to update")
-#
-#     # 执行更新
-#     user_collection.update_one({"email": email}, {"$set": update_data})
-#
-#     return {"message": "User info updated", "updated_fields": list(update_data.keys())}
-#
-from bson import ObjectId
+
 
 @user_router.put("/update/{user_id}")
 async def update_user_with_files(
@@ -359,70 +225,3 @@ async def update_user_with_files(
             "background": update_data.get("background")
         }
     }
-
-
-# @user_router.put("/update/{email}")
-# async def update_user_with_files(
-#     email: str,
-#     username: Optional[str] = Form(None),
-#     gender: Optional[int] = Form(None),
-#     age: Optional[int] = Form(None),
-#     motto: Optional[str] = Form(None),
-#     avatar: Optional[UploadFile] = File(None),
-#     background: Optional[UploadFile] = File(None),
-# ):
-#     # 查找用户
-#     db_user = user_collection.find_one({"email": email})
-#     if not db_user:
-#         raise HTTPException(status_code=404, detail="User not found")
-#
-#     update_data = {}
-#
-#     # 校验并更新用户名
-#     if username:
-#         if username != db_user.get("username"):
-#             if user_collection.find_one({"username": username}):
-#                 raise HTTPException(status_code=400, detail="用户名已被使用")
-#         update_data["username"] = username
-#
-#     if gender is not None:
-#         update_data["gender"] = gender
-#
-#     if age is not None:
-#         update_data["age"] = age
-#
-#     if motto:
-#         update_data["motto"] = motto
-#
-#     # 上传头像
-#     if avatar:
-#         ext = os.path.splitext(avatar.filename)[1]
-#         avatar_filename = f"{uuid4().hex}{ext}"
-#         avatar_path = os.path.join(UPLOAD_DIR, avatar_filename)
-#         with open(avatar_path, "wb") as f:
-#             f.write(await avatar.read())
-#         update_data["avatar"] = f"/static/uploads/{avatar_filename}"
-#
-#     # 上传背景图
-#     if background:
-#         ext = os.path.splitext(background.filename)[1]
-#         background_filename = f"{uuid4().hex}{ext}"
-#         background_path = os.path.join(UPLOAD_DIR, background_filename)
-#         with open(background_path, "wb") as f:
-#             f.write(await background.read())
-#         update_data["background"] = f"/static/uploads/{background_filename}"
-#
-#     if not update_data:
-#         raise HTTPException(status_code=400, detail="No valid fields to update")
-#
-#     # 执行数据库更新
-#     user_collection.update_one({"email": email}, {"$set": update_data})
-#
-#     return {
-#         "message": "User info updated",
-#         "updated_fields": list(update_data.keys()),
-#         "paths": {
-#             "avatar": update_data.get("avatar"),
-#             "background": update_data.get("background")
-#         }
-#     }

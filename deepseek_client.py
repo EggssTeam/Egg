@@ -2,6 +2,10 @@ import os
 import requests
 import re  # 用于正则表达式解析文本
 
+from fastapi import UploadFile
+from pdfminer.high_level import extract_text as extract_pdf_text
+from pptx import Presentation
+import tempfile
 from pdfminer.high_level import extract_text
 
 DEEPSEEK_API_URL = "https://api.deepseek.com/v1/chat/completions"
@@ -11,24 +15,61 @@ DEEPSEEK_API_KEY = os.getenv("DEEPSEEK_API_KEY")
 
 if not DEEPSEEK_API_KEY:
     raise RuntimeError("环境变量 DEEPSEEK_API_KEY 未设置，请先配置！")
+#
+# def pdf_to_text(file_path: str) -> str:
+#     return extract_text(file_path)
+# #
 
-def pdf_to_text(file_path: str) -> str:
-    return extract_text(file_path)
+
+def extract_text_from_file(file: UploadFile) -> str:
+    suffix = file.filename.lower().split('.')[-1]
+    content = file.file.read()  # 读取二进制内容
+
+    # 写入临时文件以供解析
+    with tempfile.NamedTemporaryFile(delete=False, suffix=f".{suffix}") as temp:
+        temp.write(content)
+        temp_path = temp.name
+
+    if suffix == 'pdf':
+        return extract_pdf_text(temp_path)
+    elif suffix == 'pptx':
+        prs = Presentation(temp_path)
+        text = ""
+        for slide in prs.slides:
+            for shape in slide.shapes:
+                if hasattr(shape, "text"):
+                    text += shape.text + "\n"
+        return text
+    else:
+        raise ValueError("不支持的文件格式，仅支持 PDF 和 PPTX")
+
+
+
 
 def generate_questions(text: str):
-    """
-    调用 DeepSeek API 根据输入文本生成一个选择题，
-    并返回结构化的选择题数据。
-    """
     prompt = f"""
-请根据以下文本生成 **1 个选择题**，每个问题包含 **4 个选项（ABCD）**，并标注正确答案。格式如下：
+请根据以下文本生成 **3 个选择题**，每个问题包含 **4 个选项（A、B、C、D）**，并标注正确答案。格式如下：
 
-问题: ...
+问题1: ...
 A) ...
 B) ...
 C) ...
 D) ...
-正确答案: 只给出字母
+正确答案: 给出字母+具体解释，不要重复选项内容
+
+问题2: ...
+A) ...
+B) ...
+C) ...
+D) ...
+正确答案: 给出字母+具体解释，不要重复选项内容
+
+问题3: ...
+A) ...
+B) ...
+C) ...
+D) ...
+正确答案: 给出字母+具体解释，不要重复选项内容
 
 文本内容:
 {text}
@@ -53,40 +94,46 @@ D) ...
         response.raise_for_status()
         response_data = response.json()
 
-        if "choices" in response_data and response_data["choices"]:
-            qa_text = response_data["choices"][0]["message"]["content"]
-
-            # 按行分割文本
-            lines = qa_text.splitlines()
-
-            # 确保生成的数据符合预期
-            if len(lines) < 6:
-                print("生成的选择题文本格式不完整")
-                return []
-
-            # 提取问题并去除"问题:"前缀
-            question = lines[0].strip().replace("问题:", "").strip()
-
-            # 提取选项
-            options = {
-                "A": lines[1].strip()[3:],  # 去掉 "A) " 前缀
-                "B": lines[2].strip()[3:],  # 去掉 "B) " 前缀
-                "C": lines[3].strip()[3:],  # 去掉 "C) " 前缀
-                "D": lines[4].strip()[3:],  # 去掉 "D) " 前缀
-            }
-
-            # 提取正确答案
-            correct_answer = lines[5].strip().split(":")[1].strip()  # 只保留字母
-
-            # 返回结构化的数据
-            return [{
-                "question": question,
-                "options": options,
-                "correct_answer": correct_answer
-            }]
-        else:
+        if "choices" not in response_data or not response_data["choices"]:
             print("API 返回数据没有包含 'choices' 或返回为空")
             return []
+
+        qa_text = response_data["choices"][0]["message"]["content"]
+        lines = [line.strip() for line in qa_text.splitlines() if line.strip()]
+
+        questions = []
+        i = 0
+        while i < len(lines):
+            if lines[i].startswith("问题"):
+                try:
+                    question_text = lines[i].split(":", 1)[1].strip()
+                    options = {}
+                    for j in range(1, 5):
+                        opt_line = lines[i + j]
+                        if ")" not in opt_line:
+                            print(f"选项格式错误: {opt_line}")
+                            break
+                        key = opt_line[0]
+                        val = opt_line[opt_line.index(")") + 1:].strip()
+                        options[key] = val
+                    correct_answer_line = lines[i + 5]
+                    if ":" not in correct_answer_line:
+                        print(f"正确答案格式错误: {correct_answer_line}")
+                        break
+                    correct_answer = correct_answer_line.split(":")[1].strip()
+                    questions.append({
+                        "question": question_text,
+                        "options": options,
+                        "correct_answer": correct_answer
+                    })
+                    i += 6
+                except Exception as e:
+                    print(f"解析失败: {e}")
+                    break
+            else:
+                i += 1
+
+        return questions
 
     except Exception as e:
         print(f"API 请求失败: {e}")

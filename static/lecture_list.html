@@ -225,6 +225,50 @@ function submitInvitation() {
     })
     .catch(() => alert('发送失败'));
 }
+//
+// function renderSection(status) {
+//   const arr = filtered.filter(t => t.status === status);
+//   const total = Math.ceil(arr.length / pageSize) || 1;
+//   if (page[status] > total) page[status] = total;
+//   const list = arr.slice((page[status] - 1) * pageSize, page[status] * pageSize);
+//
+//   const statusIdMap = { 0: 'notStarted', 1: 'ongoing', [-1]: 'finished' };
+//   const containerId = statusIdMap[status] + 'Container';
+//   const cont = document.getElementById(containerId);
+//   cont.innerHTML = '';
+//   list.forEach(t => {
+//     const card = document.createElement('div');
+//     card.className = 'card';
+//     let btns = '';
+//     if (status === 0) {
+//       btns = `<button class="edit" onclick="onEdit('${t.id}')">编辑</button>
+//               <button class="invite" onclick="onInvitation('${t.id}')">邀请</button>
+//               <button class="start" onclick="onStart('${t.id}')">开始</button>
+//               <button class="delete" onclick="onDelete('${t.id}')">删除</button>`;
+//     } else if (status === 1) {
+//       btns = `<button class="enter" onclick="onEnter('${t.id}')">进入</button>
+//               <button class="end" onclick="onEnd('${t.id}')">结束</button>`;
+//     } else {
+//       btns = `<button class="view" onclick="onView('${t.id}')">查看</button>
+//               <button class="delete" onclick="onDelete('${t.id}')">删除</button>`;
+//     }
+//
+//     const statusLabel = status === 0 ? '未开始' : status === 1 ? '进行中' : '已结束';
+//     card.innerHTML = `
+//       <div class="status ${statusIdMap[status]}">${statusLabel}</div>
+//       <h4>${t.topic}</h4>
+//       <div class="organizer">演讲者ID：${t.speaker_id || '无'}</div>
+//       <div class="desc">${t.description || ''}</div>
+//       <div class="btns">${btns}</div>`;
+//     cont.appendChild(card);
+//   });
+//
+//   const infoId = 'info-' + statusIdMap[status];
+//   document.getElementById(infoId).textContent = `第 ${page[status]} 页 / 共 ${total} 页`;
+//   document.getElementById('prev-' + statusIdMap[status]).disabled = page[status] <= 1;
+//   document.getElementById('next-' + statusIdMap[status]).disabled = page[status] >= total;
+// }
+
 
 function renderSection(status) {
   const arr = filtered.filter(t => t.status === status);
@@ -236,9 +280,11 @@ function renderSection(status) {
   const containerId = statusIdMap[status] + 'Container';
   const cont = document.getElementById(containerId);
   cont.innerHTML = '';
+
   list.forEach(t => {
     const card = document.createElement('div');
     card.className = 'card';
+
     let btns = '';
     if (status === 0) {
       btns = `<button class="edit" onclick="onEdit('${t.id}')">编辑</button>
@@ -254,12 +300,24 @@ function renderSection(status) {
     }
 
     const statusLabel = status === 0 ? '未开始' : status === 1 ? '进行中' : '已结束';
+
+    // 格式化开始时间
+    const formattedTime = new Date(t.start_time).toLocaleString('zh-CN', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+
     card.innerHTML = `
       <div class="status ${statusIdMap[status]}">${statusLabel}</div>
       <h4>${t.topic}</h4>
-      <div class="organizer">演讲者ID：${t.speaker_id || '无'}</div>
+      <div class="time">开始时间：${formattedTime}</div>
+      <div class="duration">时长：${t.duration} 分钟</div>
       <div class="desc">${t.description || ''}</div>
       <div class="btns">${btns}</div>`;
+
     cont.appendChild(card);
   });
 
@@ -268,6 +326,9 @@ function renderSection(status) {
   document.getElementById('prev-' + statusIdMap[status]).disabled = page[status] <= 1;
   document.getElementById('next-' + statusIdMap[status]).disabled = page[status] >= total;
 }
+
+
+
 
 function renderAll() {
   [0, 1, -1].forEach(renderSection);

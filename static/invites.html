@@ -1,0 +1,509 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <title>收到的邀请</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body, html {
+      font-family: "Helvetica Neue", Arial, sans-serif;
+      height: 100%;
+      background-color: #f5f7fa;
+    }
+    .layout { display: flex; height: 100vh; flex-direction: column; }
+
+    header {
+      height: 50px;
+      background-color: #2d3a4b;
+      color: white;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 0 20px;
+      font-size: 16px;
+    }
+    header .left { font-weight: bold; }
+    header .right {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 14px;
+    }
+    header .right button.logout-btn {
+      background-color: white;
+      color: black;
+      border-radius: 4px;
+      padding: 6px 12px;
+      border: none;
+      cursor: pointer;
+    }
+    header .right button.logout-btn:hover {
+      background-color: #f0f0f0;
+    }
+
+    .main {
+      flex: 1;
+      display: flex;
+    }
+    nav.sidebar { 
+      width: 220px; 
+      background: #2d3a4b; 
+      color: #fff; 
+      padding-top: 20px; 
+    }
+    nav.sidebar a {
+      display: block;
+      color: #b0bec5;
+      padding: 12px 30px;
+      text-decoration: none;
+      position: relative;
+    }
+    nav.sidebar a:hover, nav.sidebar a.active {
+      background-color: #409eff;
+      color: white;
+    }
+
+    /* 左侧导航未读红点 */
+    /* 左侧导航未读红点，改大改圆润 */
+    nav.sidebar a.unread-indicator::after {
+      content: '';
+      position: absolute;
+      top: 12px;       /* 稍微往上调一点 */
+      right: 16px;     /* 靠右一点 */
+      width: 14px;     /* 变大 */
+      height: 14px;    /* 变大 */
+      background-color: #f56c6c;
+      border-radius: 50%;
+      box-shadow: 0 0 6px rgba(245, 108, 108, 0.9);
+      border: 2px solid white; /* 加个白色边框，更立体 */
+    }
+
+
+    .content {
+      flex: 1;
+      padding: 40px 60px 100px;
+      overflow-y: auto;
+      position: relative;
+    }
+
+    .invite-card {
+      position: relative;
+      background-color: white;
+      border-radius: 12px;
+      padding: 24px 28px;
+      box-shadow: 0 3px 10px rgba(0,0,0,0.06);
+      margin-bottom: 5px;
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      transition: background-color 0.2s ease;
+    }
+    .invite-card:hover {
+      background-color: #f0f8ff;
+    }
+
+    .invite-content {
+      flex: 1;
+      cursor: pointer;
+    }
+
+    .invite-title {
+      font-weight: bold;
+      font-size: 18px;
+      margin-bottom: 4px;
+    }
+    .invite-organizer {
+      color: #666;
+      margin-bottom: 8px;
+    }
+    .invite-desc {
+      font-size: 14px;
+      color: #444;
+    }
+
+    .status-tag {
+      font-size: 12px;
+      font-weight: bold;
+      padding: 4px 8px;
+      border-radius: 12px;
+      position: absolute;
+      top: 14px;
+      right: 20px;
+      color: white;
+    }
+    .status-unread {
+      background-color: #f56c6c;
+    }
+    .status-read {
+      background-color: #67c23a;
+    }
+
+    /*!* 新增时间样式 *!*/
+    /*.invite-time {*/
+    /*  padding: 0 28px 20px 28px;*/
+    /*  font-size: 12px;*/
+    /*  color: #999;*/
+    /*  margin-bottom: 20px;*/
+    /*  user-select: none;*/
+    /*}*/
+    .invite-time {
+  margin-top: auto;  /* 关键：将它推到底部 */
+  padding: 0 28px 20px 28px;
+  font-size: 12px;
+  color: #999;
+  user-select: none;
+}
+
+    .modal {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background-color: rgba(0,0,0,0.5);
+      display: none;
+      justify-content: center;
+      align-items: center;
+      z-index: 999;
+    }
+    .modal.active { display: flex; }
+    .modal-box {
+      background-color: white;
+      border-radius: 10px;
+      padding: 30px;
+      width: 480px;
+      box-shadow: 0 6px 18px rgba(0,0,0,0.2);
+    }
+    .modal-box h2 {
+      margin-bottom: 12px;
+      font-size: 22px;
+    }
+    .modal-box p {
+      margin: 10px 0;
+      color: #333;
+    }
+    .modal-actions {
+      text-align: right;
+      margin-top: 20px;
+    }
+    .modal-actions button {
+      padding: 10px 16px;
+      border: none;
+      border-radius: 6px;
+      margin-left: 10px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+    .accept-btn {
+      background-color: #67c23a;
+      color: white;
+    }
+    .reject-btn {
+      background-color: #f56c6c;
+      color: white;
+    }
+
+    .footer-buttons {
+      position: fixed;
+      right: 40px;
+      bottom: 20px;
+      z-index: 1000;
+    }
+    .footer-buttons button {
+      margin-left: 10px;
+      padding: 10px 16px;
+      font-size: 14px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      background-color: #409eff;
+      color: white;
+    }
+    .footer-buttons button:hover {
+      background-color: #2b8cd7;
+    }
+  </style>
+</head>
+
+<body>
+<div class="layout">
+  <header>
+    <div class="left">演讲系统</div>
+    <div class="right">
+      <div id="userGreeting">你好！用户</div>
+      <button onclick="logout()" class="logout-btn">退出登录</button>
+    </div>
+  </header>
+  <div class="main">
+    <nav class="sidebar" id="sidebarNav">
+      <a href="#" onclick="goToPersonal()">个人主页</a>
+<!--      <a href="invites.html" class="active" id="invitesNavLink">收到的邀请</a>-->
+<!--      <a href="lecture_list.html">演讲</a>-->
+    </nav>
+    <div class="content" id="inviteList"></div>
+  </div>
+</div>
+
+<!-- 弹出框 -->
+<div class="modal" id="inviteModal">
+  <div class="modal-box">
+    <h2 id="modalTitle">演讲标题</h2>
+    <p><strong>组织者：</strong><span id="modalOrganizer"></span></p>
+    <p><strong>简介：</strong><span id="modalDescription"></span></p>
+    <div class="modal-actions">
+      <button class="reject-btn" id="rejectBtn" onclick="updateInviteStatus(-1)">拒绝演讲</button>
+      <button class="accept-btn" id="acceptBtn" onclick="updateInviteStatus(1)">接受演讲</button>
+    </div>
+  </div>
+</div>
+
+<script>
+  let userId = sessionStorage.getItem("userId");
+let invites = [];
+let currentInvite = null;
+let username = '用户';
+
+// 跳转个人主页
+function goToPersonal() {
+  if (userId) {
+    window.location.href = `person.html?id=${userId}`;
+  } else {
+    alert("未登录，无法访问个人主页");
+  }
+}
+
+// 获取用户名
+async function fetchUsername(userId) {
+  const res = await fetch(`/user/${encodeURIComponent(userId)}`);
+  if (!res.ok) throw new Error('获取用户信息失败');
+  const data = await res.json();
+  return data.username || '用户';
+}
+
+// 根据演讲ID获取演讲详情
+async function fetchLecture(lectureId) {
+  const res = await fetch(`/lecture/${encodeURIComponent(lectureId)}`);
+  if (!res.ok) throw new Error('获取演讲详情失败');
+  return await res.json();
+}
+
+// 获取邀请列表，并附带演讲详细信息
+async function fetchInvites() {
+  try {
+    if (!userId) return;
+    const res = await fetch(`/invitation/byspeaker/${encodeURIComponent(userId)}`);
+    if (!res.ok) throw new Error('请求邀请失败');
+    const invitations = await res.json();
+
+    const detailedInvites = await Promise.all(invitations.map(async invite => {
+      const lecture = await fetchLecture(invite.lecture_id);
+      return {
+        id: invite.id,
+        lecture_id: invite.lecture_id,
+        title: lecture.topic || '无标题',
+        desc: lecture.description || '',
+        organizer: lecture.organizer_id || '未知',
+        time: lecture.start_time ? new Date(lecture.start_time).toLocaleString() : '未知时间',
+        status: invite.status
+      };
+    }));
+
+    invites = detailedInvites;
+    renderInvites();
+
+  } catch (err) {
+    alert(err.message);
+  }
+}
+
+// 渲染邀请列表
+function renderInvites() {
+  const container = document.getElementById('inviteList');
+  if (!container) return;
+
+  container.innerHTML = '';
+  let readStatus = {};
+  try {
+    readStatus = JSON.parse(localStorage.getItem('readInvites') || '{}');
+  } catch {
+    readStatus = {};
+  }
+
+  invites.sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime());
+
+  invites.forEach(invite => {
+    const isRead = !!readStatus[invite.id];
+    const card = document.createElement('div');
+    card.className = 'invite-card';
+    card.setAttribute('data-id', invite.id);
+
+    card.innerHTML = `
+      <div class="invite-content" onclick="showDetails('${invite.id}')">
+        <div class="invite-title">${invite.title}</div>
+        <div class="invite-organizer">组织者：${invite.organizer}</div>
+        <div class="invite-desc">${invite.desc}</div>
+        <div class="invite-status">状态：${invite.status === 0 ? '待回应' : invite.status === 1 ? '已接受' : '已拒绝'}</div>
+        <div class="invite-time">邀请时间：${invite.time}</div>
+      </div>
+      <span class="status-tag ${isRead ? 'status-read' : 'status-unread'}">${isRead ? '已读' : '未读'}</span>
+    `;
+
+    container.appendChild(card);
+  });
+
+  updateSidebarUnread();
+}
+
+// 显示邀请详情弹窗
+function showDetails(id) {
+  const invite = invites.find(i => i.id === id);
+  if (!invite) return;
+
+  currentInvite = invite;
+
+  const modal = document.getElementById('inviteModal');
+  if (!modal) return;
+
+  document.getElementById('modalTitle').textContent = invite.title;
+  document.getElementById('modalOrganizer').textContent = invite.organizer;
+  document.getElementById('modalDescription').textContent = invite.desc;
+  modal.classList.add('active');
+
+  // 按钮状态控制：如果已接受，则禁用按钮
+  const acceptBtn = document.getElementById('acceptBtn');
+  const rejectBtn = document.getElementById('rejectBtn');
+  if (acceptBtn && rejectBtn) {
+    acceptBtn.disabled = invite.status === 1;
+    rejectBtn.disabled = invite.status === 1;
+  }
+
+  // 标记为已读
+  let readStatus = {};
+  try {
+    readStatus = JSON.parse(localStorage.getItem('readInvites') || '{}');
+  } catch {
+    readStatus = {};
+  }
+  readStatus[invite.id] = true;
+  localStorage.setItem('readInvites', JSON.stringify(readStatus));
+
+  renderInvites();
+}
+
+// 更新邀请状态（接受或拒绝）
+async function updateInviteStatus(status) {
+  if (!currentInvite || !userId) return;
+
+  const payload = {
+    lecture_id: currentInvite.lecture_id,
+    speaker_id: userId,
+    status: status
+  };
+
+  try {
+    let url = '';
+    if (status === 1) {
+      url = `/invitation/accept/${encodeURIComponent(currentInvite.id)}`;
+    } else {
+      url = `/invitation/${encodeURIComponent(currentInvite.id)}`;
+    }
+
+    const res = await fetch(url, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    });
+
+    if (!res.ok) throw new Error('更新失败');
+    alert(status === 1 ? '你已接受邀请' : '你已拒绝邀请');
+
+    document.getElementById('inviteModal').classList.remove('active');
+    currentInvite = null;
+
+    await fetchInvites();
+  } catch (err) {
+    alert(err.message);
+  }
+}
+
+// 退出登录
+function logout() {
+  if (confirm('确认退出登录？')) {
+    sessionStorage.clear();
+    window.location.href = 'login.html';
+  }
+}
+
+// 侧边栏未读提醒更新
+function updateSidebarUnread() {
+  let readStatus = {};
+  try {
+    readStatus = JSON.parse(localStorage.getItem('readInvites') || '{}');
+  } catch {
+    readStatus = {};
+  }
+  const hasUnread = invites.some(invite => !readStatus[invite.id]);
+  const inviteNavLink = document.getElementById('invitesNavLink');
+  if (!inviteNavLink) return;
+  if (hasUnread) {
+    inviteNavLink.classList.add('unread-indicator');
+  } else {
+    inviteNavLink.classList.remove('unread-indicator');
+  }
+}
+
+// 点击模态框空白关闭弹窗
+window.addEventListener('DOMContentLoaded', () => {
+  const inviteModal = document.getElementById('inviteModal');
+  if (inviteModal) {
+    inviteModal.addEventListener('click', function(e) {
+      if (e.target === this) this.classList.remove('active');
+    });
+  }
+});
+
+// 页面初始化
+window.onload = async () => {
+  try {
+    if (!userId) {
+      alert('未登录，请先登录');
+      window.location.href = 'login.html';
+      return;
+    }
+    username = await fetchUsername(userId);
+    const greetDiv = document.getElementById('userGreeting');
+    if (greetDiv) {
+      greetDiv.textContent = `你好！${username}`;
+    }
+
+    // 加载侧边栏导航
+    const res = await fetch(`/user/${encodeURIComponent(userId)}`);
+    if (!res.ok) throw new Error("获取用户信息失败");
+    const data = await res.json();
+    const role = data.role;
+    const nav = document.getElementById('sidebarNav');
+    if (nav) {
+      if (role === 0) {
+        const lectureLink = document.createElement('a');
+        lectureLink.href = 'lecture_list.html';
+        lectureLink.textContent = '演讲';
+        nav.appendChild(lectureLink);
+      } else if (role === 1) {
+        const inviteLink = document.createElement('a');
+        inviteLink.href = 'invites.html';
+        inviteLink.textContent = '收到的邀请';
+        inviteLink.id = 'invitesNavLink';
+        nav.appendChild(inviteLink);
+      }
+    }
+
+    // 加载邀请列表
+    await fetchInvites();
+
+  } catch (e) {
+    alert(e.message);
+  }
+};
+
+</script>
+</body>
+
+
+</html>

@@ -1,10 +1,10 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>注册页面</title>
-    <link rel="stylesheet" href="https://unpkg.com/element-ui@2.15.9/lib/theme-chalk/index.css">
+    <link rel="stylesheet" href="https://unpkg.com/element-ui@2.15.9/lib/theme-chalk/index.css" />
     <script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.js"></script>
     <script src="https://unpkg.com/element-ui@2.15.9/lib/index.js"></script>
     <style>
@@ -37,7 +37,7 @@
             padding: 50px 30px;
             border-radius: 8px;
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-            width: 350px;  /* 增大了宽度 */
+            width: 350px;
             text-align: center;
             overflow: hidden;
         }
@@ -45,39 +45,6 @@
         h2 {
             margin-bottom: 20px;
             color: #333;
-        }
-
-        form {
-            display: flex;
-            flex-direction: column;
-        }
-
-        label {
-            text-align: left;
-            margin-bottom: 5px;
-            font-size: 14px;
-        }
-
-        input {
-            margin-bottom: 15px;
-            padding: 10px;
-            font-size: 14px;
-            border: 1px solid #ddd;
-            border-radius: 5px;
-            transition: border 0.3s ease;
-        }
-
-        p {
-            margin-top: 15px;
-        }
-
-        a {
-            color: #4CAF50;
-            text-decoration: none;
-        }
-
-        a:hover {
-            text-decoration: underline;
         }
 
         /* 小星星和艺术字同一行 */
@@ -90,7 +57,7 @@
 
         .star-icon {
             font-size: 50px;
-            color: #FFD700;  /* 金色 */
+            color: #FFD700;
             margin-right: 10px;
         }
 
@@ -111,7 +78,6 @@
             font-family: 'Brush Script MT', cursive;
             color: #4CAF50;
         }
-
     </style>
 </head>
 <body>
@@ -145,6 +111,14 @@
                 <el-input type="password" v-model="form.confirmPassword" placeholder="确认密码"></el-input>
             </el-form-item>
 
+            <!-- 新增角色选择 -->
+            <el-form-item label="角色" :rules="[{ required: true, message: '请选择角色', trigger: 'change' }]">
+                <el-select v-model="form.role" placeholder="请选择角色">
+                    <el-option label="演讲者" :value="1"></el-option>
+                    <el-option label="听众" :value="2"></el-option>
+                </el-select>
+            </el-form-item>
+
             <el-button type="success" size="small" @click="register">注册</el-button>
         </el-form>
 
@@ -163,7 +137,8 @@
                         username: '',
                         email: '',
                         password: '',
-                        confirmPassword: ''
+                        confirmPassword: '',
+                        role: null
                     }
                 };
             },
@@ -181,6 +156,9 @@
                         isValid = false;
                     } else if (this.form.password !== this.form.confirmPassword) {
                         this.showError("密码不匹配");
+                        isValid = false;
+                    } else if (!this.form.role) {
+                        this.showError("请选择角色");
                         isValid = false;
                     }
                     return isValid;
@@ -206,18 +184,17 @@
                             username: this.form.username,
                             email: this.form.email,
                             password: this.form.password,
-                            role: 1
+                            role: this.form.role
                         })
                     });
 
                     const data = await response.json();
 
                     if (response.ok) {
-                        // 注册成功，弹出绿色成功提示框
                         this.$message.success('注册成功！');
                         setTimeout(() => {
-                            window.location.href = "login.html";  // 注册成功后跳转到登录页面
-                        }, 150); // 等待1.5秒后跳转
+                            window.location.href = "login.html";
+                        }, 1500);
                     } else {
                         this.showError(data.detail || "注册失败");
                     }

@@ -245,10 +245,11 @@ nav.sidebar {
     </div>
   </header>
   <div class="main">
-    <nav class="sidebar">
-<!--      <a href="personal.html" class="active">个人主页</a>-->
+    <nav class="sidebar" id="sidebarNav">
       <a href="#" onclick="goToPersonal()">个人主页</a>
-      <a href="lecture_list.html">演讲</a>
+<!--      <a href="invites.html">收到的邀请</a>-->
+<!--      <a href="lecture_list.html">演讲</a>-->
+
     </nav>
     <div class="content" id="mainContent">
 <!--      <button class="bg-btn" onclick="document.getElementById('bgInput').click()">添加背景</button>-->
@@ -437,6 +438,35 @@ setTimeout(() => messageDiv.style.display = 'none', 4000);
   function changeBackground(event) {
     // 你说不要这部分逻辑，这里空函数保留调用
   }
+
+
+   window.addEventListener('DOMContentLoaded', async () => {
+    const userId = sessionStorage.getItem("userId");
+    if (!userId) return;
+
+    try {
+      const res = await fetch(`/user/${encodeURIComponent(userId)}`);
+      if (!res.ok) throw new Error("获取用户信息失败");
+      const data = await res.json();
+      const role = data.role;
+      const nav = document.getElementById('sidebarNav');
+
+      if (role === 0) {
+        const lectureLink = document.createElement('a');
+        lectureLink.href = 'lecture_list.html';
+        lectureLink.textContent = '演讲';
+        nav.appendChild(lectureLink);
+      } else if (role === 1) {
+        const inviteLink = document.createElement('a');
+        inviteLink.href = 'invites.html';
+        inviteLink.textContent = '收到的邀请';
+        nav.appendChild(inviteLink);
+      }
+    } catch (err) {
+      console.error("加载导航失败：", err);
+    }
+  });
+
 </script>
 </body>
 </html>

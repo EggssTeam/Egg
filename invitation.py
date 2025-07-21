@@ -2,7 +2,10 @@ from pydantic import BaseModel, Field, validator
 from bson import ObjectId
 from typing import Optional
 from fastapi import APIRouter, HTTPException
-from db import db, invitation_collection  # 假设你有一个db.py文件，其中定义了数据库连接
+from db import db, invitation_collection, lecture_collection  # 假设你有一个db.py文件，其中定义了数据库连接
+
+
+from fastapi import Query
 
 # 创建路由
 invitation_router = APIRouter()
@@ -146,3 +149,53 @@ async def delete_invitation(invitation_id: str):
         raise HTTPException(status_code=404, detail="Invitation not found")
 
     return {"message": f"Invitation {invitation_id} deleted successfully"}
+
+
+
+@invitation_router.get("/byspeaker/{speaker_id}", response_model=list[InvitationResponse])
+async def get_invitations_by_speaker(speaker_id: str):
+    try:
+        speaker_obj_id = ObjectId(speaker_id)
+    except:
+        raise HTTPException(status_code=400, detail="Invalid speaker_id format")
+
+    invitations = invitation_collection.find({"speaker_id": speaker_obj_id})
+    return [
+        InvitationResponse(
+            id=str(invite["_id"]),
+            lecture_id=str(invite["lecture_id"]),
+            speaker_id=str(invite["speaker_id"]),
+            status=invite["status"]
+        )
+        for invite in invitations
+    ]
+
+# 更新 invitation 状态，并把 speaker_id 写入 lecture 表中
+@invitation_router.put("/accept/{invitation_id}", response_model=InvitationResponse)
+async def accept_invitation(invitation_id: str):
+    try:
+        obj_id = ObjectId(invitation_id)
+        invite = invitation_collection.find_one({"_id": obj_id})
+        if not invite:
+            raise HTTPException(status_code=404, detail="Invitation not found")
+    except:
+        raise HTTPException(status_code=400, detail="Invalid invitation ID")
+
+    # 更新 invitation 状态为 1（接受）
+    invitation_collection.update_one(
+        {"_id": obj_id},
+        {"$set": {"status": 1}}
+    )
+
+    # 同步更新 lecture 中的 speaker_id
+    lecture_collection.update_one(
+        {"_id": invite["lecture_id"]},
+        {"$set": {"speaker_id": invite["speaker_id"]}}
+    )
+
+    return InvitationResponse(
+        id=str(invite["_id"]),
+        lecture_id=str(invite["lecture_id"]),
+        speaker_id=str(invite["speaker_id"]),
+        status=1
+    )

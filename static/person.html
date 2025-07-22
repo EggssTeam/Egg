@@ -6,6 +6,14 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>个人主页</title>
+
+    <!-- ✅ 引入 Element Plus 样式和 JS（无需 Vue 环境也能用） -->
+  <link rel="stylesheet" href="https://unpkg.com/element-plus/dist/index.css" />
+  <script src="https://unpkg.com/vue@3"></script>
+  <script src="https://unpkg.com/element-plus"></script>
+
+
+
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
     /*body, html {*/
@@ -210,19 +218,19 @@ nav.sidebar {
     .modal-box .cancel { background-color: #ccc; }
     .modal-box .cancel:hover { background-color: #999; }
 
-    #message {
-      position: absolute;
-      top: 10px;
-      left: 50%;
-      transform: translateX(-50%);
-      color: red;
-      font-weight: bold;
-      z-index: 1000;
-      background: rgba(255,255,255,0.8);
-      padding: 5px 15px;
-      border-radius: 8px;
-      display: none;
-    }
+    /*#message {*/
+    /*  position: absolute;*/
+    /*  top: 10px;*/
+    /*  left: 50%;*/
+    /*  transform: translateX(-50%);*/
+    /*  color: red;*/
+    /*  font-weight: bold;*/
+    /*  z-index: 1000;*/
+    /*  background: rgba(255,255,255,0.8);*/
+    /*  padding: 5px 15px;*/
+    /*  border-radius: 8px;*/
+    /*  display: none;*/
+    /*}*/
   </style>
 </head>
 
@@ -230,6 +238,7 @@ nav.sidebar {
 <!DOCTYPE html>
 <html lang="zh-CN">
 <head>
+
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>个人主页</title>
@@ -265,7 +274,7 @@ nav.sidebar {
   </div>
 </div>
 
-<div id="message"></div>
+<!--<div id="message"></div>-->
 
 <!-- 编辑弹窗 -->
 <div class="modal" id="editModal">
@@ -287,201 +296,183 @@ nav.sidebar {
   </div>
 </div>
 
-<script>
-  // const id = new URLSearchParaFms(location.search).get("id");
-  id = sessionStorage.getItem("userId");
 
-  const messageDiv = document.getElementById("message");
-
-  const usernameDisplay = document.getElementById('usernameDisplay');
-  const usernameEl = document.getElementById('username');
-  const emailEl = document.getElementById('email');
-  const signatureEl = document.getElementById('signature');
-  const avatarEl = document.getElementById('avatar');
-
-  const editModal = document.getElementById('editModal');
-  const editUsername = document.getElementById('editUsername');
-  const editEmail = document.getElementById('editEmail');
-  const editSignature = document.getElementById('editSignature');
-  const editAvatarFile = document.getElementById('editAvatarFile');
-  const avatarPreview = document.getElementById('avatarPreview');
-  const editBackgroundFile = document.getElementById('editBackgroundFile');
-  const backgroundPreview = document.getElementById('backgroundPreview');
-
-
-    function goToPersonal() {
-    const userId = sessionStorage.getItem("userId");
-    if (userId) {
-    window.location.href = `person.html?id=${userId}`;
-  } else {
-    alert("未登录，无法访问个人主页");
-  }
-  }
-
-
-function showMessage(msg, isError = true) {
-messageDiv.style.display = 'block';
-messageDiv.style.color = isError ? 'red' : 'green';
-messageDiv.textContent = msg;
-setTimeout(() => messageDiv.style.display = 'none', 4000);
-  }
-
-  function logout() {
-    if (confirm('确认退出登录？')) {
-      location.href = 'login.html';
+  <script>
+    // ✅ 修改 ElMessage 用法为 ElementPlus.ElMessage
+    function showMessage(msg, isError = true) {
+      if (isError) {
+        ElementPlus.ElMessage.error(msg);
+      } else {
+        ElementPlus.ElMessage.success(msg);
+      }
     }
-  }
 
-  function openModal() {
-    editModal.classList.add('active');
-  }
+    // ✅ 其他逻辑中保留 showMessage 用法
+    function goToPersonal() {
+      const userId = sessionStorage.getItem("userId");
+      if (userId) {
+        window.location.href = `person.html?id=${userId}`;
+      } else {
+        showMessage("未登录，无法访问个人主页", true);
+      }
+    }
 
-  function closeModal() {
-    editModal.classList.remove('active');
-    avatarPreview.style.display = 'none';
-    avatarPreview.src = '';
-    editAvatarFile.value = '';
-    backgroundPreview.style.backgroundImage = '';
-    backgroundPreview.style.display = 'none';
-    editBackgroundFile.value = '';
-  }
+    function logout() {
+      if (confirm('确认退出登录？')) {
+        location.href = 'login.html';
+      }
+    }
 
-  editAvatarFile.addEventListener('change', () => {
-    const file = editAvatarFile.files[0];
-    if (file) {
-      avatarPreview.src = URL.createObjectURL(file);
-      avatarPreview.style.display = 'block';
-    } else {
+    function openModal() {
+      document.getElementById('editModal').classList.add('active');
+    }
+
+    function closeModal() {
+      const avatarPreview = document.getElementById('avatarPreview');
+      const backgroundPreview = document.getElementById('backgroundPreview');
+      document.getElementById('editModal').classList.remove('active');
       avatarPreview.style.display = 'none';
       avatarPreview.src = '';
-    }
-  });
-
-  editBackgroundFile.addEventListener('change', () => {
-    const file = editBackgroundFile.files[0];
-    if (file) {
-      const url = URL.createObjectURL(file);
-      backgroundPreview.style.backgroundImage = `url(${url})`;
-      backgroundPreview.style.display = 'block';
-    } else {
+      document.getElementById('editAvatarFile').value = '';
       backgroundPreview.style.backgroundImage = '';
       backgroundPreview.style.display = 'none';
-    }
-  });
-
-  document.getElementById('editForm').addEventListener('submit', async (e) => {
-    e.preventDefault();
-
-    const formData = new FormData();
-    formData.append("username", editUsername.value.trim());
-    formData.append("motto", editSignature.value.trim());
-    if (editAvatarFile.files[0]) {
-      formData.append("avatar", editAvatarFile.files[0]);
-    }
-    if (editBackgroundFile.files[0]) {
-      formData.append("background", editBackgroundFile.files[0]);
+      document.getElementById('editBackgroundFile').value = '';
     }
 
-    try {
-      const res = await fetch(`/user/update/${encodeURIComponent(id)}`, {
-        method: 'PUT',
-        body: formData
-      });
-      const data = await res.json();
-      if (res.ok) {
-        showMessage("修改成功: " + (data.updated_fields || []).join(", "), false);
-        usernameDisplay.textContent = `你好！${editUsername.value}`;
-        usernameEl.textContent = editUsername.value;
-        signatureEl.textContent = editSignature.value;
-        if (data.updated_fields.includes("avatar")) {
-          avatarEl.src = avatarPreview.src;
-        }
-        if (data.updated_fields.includes("background")) {
-          document.getElementById('mainContent').style.backgroundImage = backgroundPreview.style.backgroundImage;
-        }
-        closeModal();
+    document.getElementById('editAvatarFile').addEventListener('change', () => {
+      const file = document.getElementById('editAvatarFile').files[0];
+      const avatarPreview = document.getElementById('avatarPreview');
+      if (file) {
+        avatarPreview.src = URL.createObjectURL(file);
+        avatarPreview.style.display = 'block';
       } else {
-        showMessage("修改失败: " + (data.detail || "未知错误"));
+        avatarPreview.style.display = 'none';
+        avatarPreview.src = '';
       }
-    } catch (err) {
-      showMessage("请求失败: " + err.message);
-    }
-  });
-
-  fetch(`/user/${encodeURIComponent(id)}`)
-    .then(res => {
-      if (!res.ok) throw new Error("用户不存在");
-      return res.json();
-    })
-    .then(user => {
-      usernameDisplay.textContent = `你好！${user.username || '用户'}`;
-      usernameEl.textContent = user.username || '';
-      emailEl.textContent = user.email || '';
-      signatureEl.textContent = user.motto || '';
-      avatarEl.src = user.avatar || '';
-      if (user.background) {
-        // document.getElementById('mainContent').style.backgroundImage = `url(${user.background})`;
-        document.body.style.backgroundImage = `url(${user.background})`;
-        document.body.style.backgroundSize = 'cover';
-        document.body.style.backgroundPosition = 'center';
-        document.body.style.backgroundAttachment = 'fixed'; // 可选
-
-      }
-      editUsername.value = user.username || '';
-      editEmail.value = user.email || '';
-      editSignature.value = user.motto || '';
-    })
-    .catch(err => {
-      showMessage("加载用户信息失败：" + err.message);
     });
 
-  function changeBackground(event) {
-    // 你说不要这部分逻辑，这里空函数保留调用
-  }
-
-
-   window.addEventListener('DOMContentLoaded', async () => {
-    const userId = sessionStorage.getItem("userId");
-    if (!userId) return;
-
-    try {
-      const res = await fetch(`/user/${encodeURIComponent(userId)}`);
-      if (!res.ok) throw new Error("获取用户信息失败");
-      const data = await res.json();
-      const role = data.role;
-      const nav = document.getElementById('sidebarNav');
-
-      if (role === 0) {
-        const lectureLink = document.createElement('a');
-        lectureLink.href = 'lecture_list.html';
-        lectureLink.textContent = '演讲';
-        nav.appendChild(lectureLink);
-      } else if (role === 1) {
-
-
-
-        const inviteLink = document.createElement('a');
-
-        inviteLink.href = 'invites.html';
-        inviteLink.textContent = '收到的邀请';
-        nav.appendChild(inviteLink);
-
-         // 链接2：我的演讲
-      const speakerLink = document.createElement('a');
-      speakerLink.href = 'lecture_speaker.html';
-      speakerLink.textContent = '我的演讲';
-      nav.appendChild(speakerLink);
-      }else{
-          const lectureLink = document.createElement('a');
-        lectureLink.href = 'lecture_user.html';
-        lectureLink.textContent = '演讲';
-        nav.appendChild(lectureLink);
+    document.getElementById('editBackgroundFile').addEventListener('change', () => {
+      const file = document.getElementById('editBackgroundFile').files[0];
+      const backgroundPreview = document.getElementById('backgroundPreview');
+      if (file) {
+        backgroundPreview.style.backgroundImage = `url(${URL.createObjectURL(file)})`;
+        backgroundPreview.style.display = 'block';
+      } else {
+        backgroundPreview.style.backgroundImage = '';
+        backgroundPreview.style.display = 'none';
       }
-    } catch (err) {
-      console.error("加载导航失败：", err);
-    }
-  });
+    });
 
-</script>
+    document.getElementById('editForm').addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const id = sessionStorage.getItem("userId");
+      const username = document.getElementById('editUsername').value.trim();
+      const signature = document.getElementById('editSignature').value.trim();
+      const avatar = document.getElementById('editAvatarFile').files[0];
+      const background = document.getElementById('editBackgroundFile').files[0];
+
+      const formData = new FormData();
+      formData.append("username", username);
+      formData.append("motto", signature);
+      if (avatar) formData.append("avatar", avatar);
+      if (background) formData.append("background", background);
+
+      try {
+        const res = await fetch(`/user/update/${encodeURIComponent(id)}`, {
+          method: 'PUT',
+          body: formData
+        });
+        const data = await res.json();
+        if (res.ok) {
+          showMessage("修改成功: " + (data.updated_fields || []).join(", "), false);
+          document.getElementById('usernameDisplay').textContent = `你好！${username}`;
+          document.getElementById('username').textContent = username;
+          document.getElementById('signature').textContent = signature;
+          if (data.updated_fields.includes("avatar")) {
+            document.getElementById('avatar').src = document.getElementById('avatarPreview').src;
+          }
+          if (data.updated_fields.includes("background")) {
+            document.body.style.backgroundImage = document.getElementById('backgroundPreview').style.backgroundImage;
+          }
+          closeModal();
+        } else {
+          showMessage("修改失败: " + (data.detail || "未知错误"));
+        }
+      } catch (err) {
+        showMessage("请求失败: " + err.message);
+      }
+    });
+
+    // ✅ 页面初始化加载用户信息
+    window.addEventListener('DOMContentLoaded', async () => {
+      const id = sessionStorage.getItem("userId");
+      if (!id) return;
+
+      try {
+        const res = await fetch(`/user/${encodeURIComponent(id)}`);
+        if (!res.ok) throw new Error("用户不存在");
+        const user = await res.json();
+        document.getElementById('usernameDisplay').textContent = `你好！${user.username || '用户'}`;
+        document.getElementById('username').textContent = user.username || '';
+        document.getElementById('email').textContent = user.email || '';
+        document.getElementById('signature').textContent = user.motto || '';
+        document.getElementById('avatar').src = user.avatar || '';
+        if (user.background) {
+          document.body.style.backgroundImage = `url(${user.background})`;
+        }
+        document.getElementById('editUsername').value = user.username || '';
+        document.getElementById('editEmail').value = user.email || '';
+        document.getElementById('editSignature').value = user.motto || '';
+      } catch (err) {
+        showMessage("加载用户信息失败：" + err.message);
+      }
+    });
+
+    // ✅ 导航栏根据角色动态生成
+    window.addEventListener('DOMContentLoaded', async () => {
+      const userId = sessionStorage.getItem("userId");
+      if (!userId) return;
+
+      try {
+        const res = await fetch(`/user/${encodeURIComponent(userId)}`);
+        if (!res.ok) throw new Error("获取用户信息失败");
+        const data = await res.json();
+        const role = data.role;
+        const nav = document.getElementById('sidebarNav');
+
+        if (role === 0) {
+          const lectureLink = document.createElement('a');
+          lectureLink.href = 'lecture_list.html';
+          lectureLink.textContent = '演讲';
+          nav.appendChild(lectureLink);
+        } else if (role === 1) {
+          const inviteLink = document.createElement('a');
+          inviteLink.href = 'invites.html';
+          inviteLink.textContent = '收到的邀请';
+          nav.appendChild(inviteLink);
+
+          const speakerLink = document.createElement('a');
+          speakerLink.href = 'lecture_speaker.html';
+          speakerLink.textContent = '我的演讲';
+          nav.appendChild(speakerLink);
+        } else {
+          const lectureLink = document.createElement('a');
+          lectureLink.href = 'lecture_user.html';
+          lectureLink.textContent = '演讲';
+          nav.appendChild(lectureLink);
+        }
+      } catch (err) {
+        console.error("加载导航失败：", err);
+      }
+    });
+  </script>
+
+
 </body>
 </html>
+
+
+
+
+
+

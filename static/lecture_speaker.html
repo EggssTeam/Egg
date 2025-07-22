@@ -36,6 +36,7 @@
     .btns .invite { background: #1f90ff; }
     .btns .start { background: #f0ad4e; }
     .btns .enter { background: #673ab7; }
+    .btns .enter1 { background: #10b5da; }
     .btns .end { background: #999; }
     .btns .view { background: #6666cc; }
     .btns .delete { background: #ff4d4f; }
@@ -125,6 +126,13 @@
       </div>
     </div>
   </div>
+
+
+
+ <input type="file" id="uploadHiddenInput" accept=".pdf,.pptx" style="display:none" />
+
+
+
 <!-- 弹窗遮罩层 -->
 <div id="inviteModal" class="modal" style="display:none; position:fixed; inset:0; background: rgba(0,0,0,0.4); z-index:1000;">
 
@@ -268,7 +276,7 @@ function renderSection(status) {
 
     let btns = '';
     if (status === 0) {
-      btns = ``;
+        btns = `<button class="enter1"  onclick="onUploadFile('${targetLecture.id}')">上传文件</button>`;
     } else if (status === 1) {
       btns = `<button class="enter" onclick="onEnter('${targetLecture.id}')">进入</button>
               `;
@@ -303,6 +311,43 @@ function renderSection(status) {
   document.getElementById('prev-' + statusIdMap[status]).disabled = page[status] <= 1;
   document.getElementById('next-' + statusIdMap[status]).disabled = page[status] >= total;
 }
+
+
+
+function onUploadFile(lectureId) {
+  const input = document.getElementById('uploadHiddenInput');
+  input.click();
+
+  input.onchange = async () => {
+    const file = input.files[0];
+    if (!file) return;
+
+    const formData = new FormData();
+    formData.append('lecture_id', lectureId);
+    formData.append('file', file);
+
+    try {
+      const res = await fetch('/upload_file', {
+        method: 'POST',
+        body: formData
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || '上传失败');
+      }
+
+      alert('上传成功！');
+    } catch (e) {
+      alert('上传失败：' + e.message);
+    } finally {
+      input.value = ''; // 清空文件，便于再次上传
+    }
+  };
+}
+
+
+
 
 function renderAll() {
   [0, 1, -1].forEach(renderSection);

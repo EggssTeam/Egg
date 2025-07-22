@@ -219,8 +219,71 @@
     .footer-buttons button:hover {
       background-color: #2b8cd7;
     }
+#toggleDeleteModeBtn {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  background-color: #f56c6c;
+  color: white;
+  border: none;
+  padding: 12px 20px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 16px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+  z-index: 1000;
+}
+
+#confirmDeleteBtn {
+  position: fixed;
+  right: 140px; /* 向左偏移 */
+  bottom: 20px;
+  background-color: #67c23a;
+  color: white;
+  border: none;
+  padding: 12px 20px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 16px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+  z-index: 1000;
+  display: none;
+}
+
+#cancelDeleteBtn {
+  position: fixed;
+  right: 30px; /* 确认按钮和取消按钮横向间隔 */
+  bottom: 20px;
+  background-color: #f56c6c;
+  color: white;
+  border: none;
+  padding: 12px 20px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 16px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
+  z-index: 1000;
+  display: none;
+}
+  /* 多选框左侧对齐 */
+  .invite-card {
+    display: flex;
+    align-items: flex-start;
+  }
+  .invite-card input[type="checkbox"] {
+    margin-right: 12px;
+    margin-top: 8px;
+    flex-shrink: 0;
+  }
+  .invite-content {
+    flex-grow: 1;
+    cursor: pointer;
+  }
+
   </style>
 </head>
+
+
 
 <body>
 <div class="layout">
@@ -234,12 +297,18 @@
   <div class="main">
     <nav class="sidebar" id="sidebarNav">
       <a href="#" onclick="goToPersonal()">个人主页</a>
-<!--      <a href="invites.html" class="active" id="invitesNavLink">收到的邀请</a>-->
-<!--      <a href="lecture_list.html">演讲</a>-->
+      <!-- 你的导航链接动态加载逻辑不变 -->
     </nav>
-    <div class="content" id="inviteList"></div>
+    <div class="content">
+      <div id="inviteList"></div>
+    </div>
   </div>
 </div>
+
+<!-- 右下角删除邀请按钮 -->
+<button id="toggleDeleteModeBtn" onclick="toggleDeleteMode()">删除邀请</button>
+<button id="confirmDeleteBtn" onclick="deleteSelectedInvites()">确认</button>
+<button id="cancelDeleteBtn" onclick="cancelDeleteMode()">取消</button>
 
 <!-- 弹出框 -->
 <div class="modal" id="inviteModal">
@@ -259,6 +328,12 @@
   let invites = [];
   let currentInvite = null;
   let username = '用户';
+
+  // 用于保存选中状态，key 是邀请id，value 是true/false
+  let selectedInvites = {};
+
+  // 多选模式标志，默认关闭
+  let deleteMode = false;
 
   function goToPersonal() {
     const userId = sessionStorage.getItem("userId");
@@ -302,6 +377,9 @@
       }));
 
       invites = detailedInvites;
+
+      // 清空已选状态，重新渲染
+      selectedInvites = {};
       renderInvites();
 
     } catch (err) {
@@ -318,12 +396,20 @@
 
     invites.forEach(invite => {
       const isRead = readStatus[invite.id] === true;
+      const isChecked = !!selectedInvites[invite.id];
+
+      // 多选模式时显示checkbox，否则不显示
+      const checkboxHTML = deleteMode
+        ? `<input type="checkbox" onchange="toggleSelectInvite(event, '${invite.id}')" ${isChecked ? 'checked' : ''} />`
+        : '';
+
       const card = document.createElement('div');
       card.className = 'invite-card';
       card.setAttribute('data-id', invite.id);
 
       card.innerHTML = `
-        <div class="invite-content" onclick="showDetails('${invite.id}')">
+        ${checkboxHTML}
+        <div class="invite-content" onclick="${deleteMode ? 'void(0)' : `showDetails('${invite.id}')`}">
           <div class="invite-title">${invite.title}</div>
           <div class="invite-organizer">演讲者：${invite.organizer}</div>
           <div class="invite-desc">${invite.desc}</div>
@@ -338,7 +424,13 @@
     updateSidebarUnread();
   }
 
+  function toggleSelectInvite(e, id) {
+    e.stopPropagation(); // 防止触发 showDetails
+    selectedInvites[id] = e.target.checked;
+  }
+
   function showDetails(id) {
+    if (deleteMode) return; // 多选模式下不响应点击详情
     const invite = invites.find(i => i.id === id);
     if (!invite) return;
 
@@ -393,6 +485,59 @@
     }
   }
 
+  // 切换多选模式
+  function toggleDeleteMode() {
+    deleteMode = true;
+    selectedInvites = {};
+    renderInvites();
+
+    document.getElementById('toggleDeleteModeBtn').style.display = 'none';
+    document.getElementById('confirmDeleteBtn').style.display = 'inline-block';
+    document.getElementById('cancelDeleteBtn').style.display = 'inline-block';
+  }
+
+  // 取消多选模式
+  function cancelDeleteMode() {
+    deleteMode = false;
+    selectedInvites = {};
+    renderInvites();
+
+    document.getElementById('toggleDeleteModeBtn').style.display = 'inline-block';
+    document.getElementById('confirmDeleteBtn').style.display = 'none';
+    document.getElementById('cancelDeleteBtn').style.display = 'none';
+  }
+
+  async function deleteSelectedInvites() {
+    const idsToDelete = Object.entries(selectedInvites)
+      .filter(([id, checked]) => checked)
+      .map(([id]) => id);
+
+    if (idsToDelete.length === 0) {
+      alert('请先选择要删除的邀请');
+      return;
+    }
+
+    if (!confirm(`确认删除选中的 ${idsToDelete.length} 条邀请吗？此操作不可撤销。`)) {
+      return;
+    }
+
+    try {
+      for (const id of idsToDelete) {
+        const res = await fetch(`/invitation/${encodeURIComponent(id)}`, {
+          method: 'DELETE'
+        });
+        if (!res.ok) {
+          throw new Error(`删除邀请 ${id} 失败`);
+        }
+      }
+      alert('删除成功');
+      cancelDeleteMode(); // 删除成功后退出多选模式并刷新列表
+      await fetchInvites();
+    } catch (err) {
+      alert(err.message);
+    }
+  }
+
   function logout() {
     if (confirm('确认退出登录？')) {
       window.location.href = 'login.html';
@@ -403,28 +548,17 @@
     if (e.target === this) this.classList.remove('active');
   });
 
-  // function updateSidebarUnread() {
-  //   const readStatus = JSON.parse(localStorage.getItem('readInvites') || '{}');
-  //   const hasUnread = invites.some(invite => !readStatus[invite.id]);
-  //   const inviteNavLink = document.getElementById('invitesNavLink');
-  //   if (hasUnread) {
-  //     inviteNavLink.classList.add('unread-indicator');
-  //   } else {
-  //     inviteNavLink.classList.remove('unread-indicator');
-  //   }
-  // }
   function updateSidebarUnread() {
-  const readStatus = JSON.parse(localStorage.getItem('readInvites') || '{}');
-  const hasUnread = invites.some(invite => !readStatus[invite.id]);
-  const inviteNavLink = document.getElementById('invitesNavLink');
-  if (!inviteNavLink) return;  // 加这句避免null报错
-  if (hasUnread) {
-    inviteNavLink.classList.add('unread-indicator');
-  } else {
-    inviteNavLink.classList.remove('unread-indicator');
+    const readStatus = JSON.parse(localStorage.getItem('readInvites') || '{}');
+    const hasUnread = invites.some(invite => !readStatus[invite.id]);
+    const inviteNavLink = document.getElementById('invitesNavLink');
+    if (!inviteNavLink) return;
+    if (hasUnread) {
+      inviteNavLink.classList.add('unread-indicator');
+    } else {
+      inviteNavLink.classList.remove('unread-indicator');
+    }
   }
-}
-
 
   window.onload = async () => {
     try {
@@ -436,9 +570,7 @@
     }
   };
 
-
-
-   window.addEventListener('DOMContentLoaded', async () => {
+  window.addEventListener('DOMContentLoaded', async () => {
     const userId = sessionStorage.getItem("userId");
     if (!userId) return;
 
@@ -455,22 +587,17 @@
         lectureLink.textContent = '演讲';
         nav.appendChild(lectureLink);
       } else if (role === 1) {
-
-
-
         const inviteLink = document.createElement('a');
-
         inviteLink.href = 'invites.html';
         inviteLink.textContent = '收到的邀请';
         nav.appendChild(inviteLink);
 
-         // 链接2：我的演讲
-      const speakerLink = document.createElement('a');
-      speakerLink.href = 'lecture_speaker.html';
-      speakerLink.textContent = '我的演讲';
-      nav.appendChild(speakerLink);
-      }else{
-          const lectureLink = document.createElement('a');
+        const speakerLink = document.createElement('a');
+        speakerLink.href = 'lecture_speaker.html';
+        speakerLink.textContent = '我的演讲';
+        nav.appendChild(speakerLink);
+      } else {
+        const lectureLink = document.createElement('a');
         lectureLink.href = 'lecture_user.html';
         lectureLink.textContent = '演讲';
         nav.appendChild(lectureLink);
@@ -479,10 +606,9 @@
       console.error("加载导航失败：", err);
     }
   });
-
-
 </script>
 </body>
+
 
 
 </html>

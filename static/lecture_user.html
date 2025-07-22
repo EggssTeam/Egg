@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="zh-CN" xmlns="http://www.w3.org/1999/html">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>演讲管理系统</title>
+    <style>
+ body, html { margin: 0; padding: 0; height: 100%; font-family: Arial, sans-serif; background: #f5f7f5; }
+    header { background: #2d3a4b; color: #fff; height: 50px; display: flex; justify-content: space-between; align-items: center; padding: 0 20px; }
+    .left { font-weight: bold; }
+    .right { display: flex; align-items: center; gap: 12px; font-size: 14px; }
+    .right button { cursor: pointer; font-size: 14px; }
+    .main { display: flex; height: calc(100vh - 50px); }
+    nav.sidebar { width: 220px; background: #2d3a4b; color: #fff; padding-top: 20px; }
+    nav.sidebar a { display: block; padding: 12px 30px; color: #b0bec5; text-decoration: none; }
+    nav.sidebar a:hover, nav.sidebar a.active { background: #409eff; color: #fff; }
+    .content-area { flex: 1; overflow-y: auto; background: #fff; padding: 20px 30px; box-sizing: border-box; }
+    .top-actions { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
+    .top-actions h2 { margin: 0; font-size: 20px; }
+    .top-actions .search-box input { padding: 6px 12px; font-size: 14px; width: 250px; border: 1px solid #ccc; border-radius: 4px; }
+    .top-actions button.new { background: #1a73e8; color: #fff; padding: 8px 16px; border: none; border-radius: 4px; cursor: pointer; }
+    .top-actions button.new:hover { background: #155fc1; }
+    .section { margin-bottom: 30px; }
+    .section h3 { margin-bottom: 10px; font-size: 18px; }
+    .cards { display: flex; gap: 20px; flex-wrap: wrap; }
+    .card { background: #fff; border: 1px solid #e0e6ed; border-radius: 8px; box-shadow: 0 2px 6px rgba(0,0,0,0.05); padding: 12px; width: calc(33.333% - 20px); box-sizing: border-box; position: relative; display: flex; flex-direction: column; }
+    .card h4 { margin: 0 0 6px; font-size: 16px; }
+    .id-field, .organizer, .desc { font-size: 14px; color: #444; margin-bottom: 4px; }
+    .status { position: absolute; top: 12px; right: 12px; padding: 4px 8px; border-radius: 12px; font-size: 12px; font-weight: bold; color: #fff; }
+    .status.notStarted { background: #409eff; }
+    .status.ongoing { background: #673ab7; }
+    .status.finished { background: #999; }
+    .btns { margin-top: auto; }
+    .btns button { margin-right: 6px; padding: 6px 10px; font-size: 13px; border: none; border-radius: 4px; color: white; cursor: pointer; }
+    .btns .edit { background: #18a058; }
+    .btns .invite { background: #1f90ff; }
+    .btns .start { background: #f0ad4e; }
+    .btns .enter { background: #673ab7; }
+    .btns .end { background: #999; }
+    .btns .view { background: #6666cc; }
+    .btns .delete { background: #ff4d4f; }
+    .pagination { margin-top: 10px; text-align: right; font-size: 14px; }
+    .pagination button { margin-left: 6px; padding: 4px 10px; border: none; border-radius: 4px; cursor: pointer; background: #eee; }
+    .pagination button:disabled { opacity: 0.5; cursor: not-allowed; }
+    .modal { display: none; position: fixed; top:0;left:0;right:0;bottom:0; background:rgba(0,0,0,0.4); justify-content: center; align-items: center; }
+    .modal.active { display: flex; }
+    .modal-box { background: #fff; border-radius: 8px; padding: 20px; width: 380px; box-shadow: 0 4px 12px rgba(0,0,0,0.2); }
+    .modal-box h3 { margin-top:0; }
+    .modal-box input { width: 100%; padding: 6px 8px; margin-bottom: 10px; border:1px solid #ccc; border-radius:4px; }
+    .modal-box .actions { text-align: right; }
+    .modal-box button { padding: 6px 12px; border: none; border-radius: 4px; margin-left: 8px; cursor: pointer; }
+    .cancel { background: #999; color: #fff; }
+    .cancel:hover { background: #777; }
+    .add { background: #1a73e8; color: #fff; }
+    .add:hover { background: #155fc1; }
+  </style>
+</head>
+<body>
+  <div class="layout">
+    <header>
+      <div class="left">演讲系统</div>
+      <div class="right" style="gap: 12px; align-items: center; display: flex;">
+        <div id="greet">你好！用户</div>
+        <button onclick="logout()" style="cursor:pointer;">退出登录</button>
+      </div>
+    </header>
+    <div class="main">
+      <nav class="sidebar" id="sidebarNav">
+        <a href="#" onclick="goToPersonal()">个人主页</a>
+<!--        <a href="invites.html">收到的邀请</a>-->
+
+<!--        <a href="lecture_list.html">演讲</a>-->
+      </nav>
+      <div class="content-area">
+        <div class="top-actions">
+          <h2>演讲管理</h2>
+          <div class="search-box"><input type="text" id="searchInput" placeholder="搜索名称" /></div>
+          <button class="new" onclick="openModal()">➕ 新建演讲</button>
+        </div>
+
+        <div class="section" id="sec-notStarted">
+          <h3>未开始的演讲</h3>
+          <div class="cards" id="notStartedContainer"></div>
+          <div class="pagination" id="pag-notStarted">
+            <button onclick="changePage('notStarted', -1)" id="prev-notStarted">&lt;</button>
+            <span id="info-notStarted">第 1 页</span>
+            <button onclick="changePage('notStarted', 1)" id="next-notStarted">&gt;</button>
+          </div>
+        </div>
+
+        <div class="section" id="sec-ongoing">
+          <h3>已开始的演讲</h3>
+          <div class="cards" id="ongoingContainer"></div>
+          <div class="pagination" id="pag-ongoing">
+            <button onclick="changePage('ongoing', -1)" id="prev-ongoing">&lt;</button>
+            <span id="info-ongoing">第 1 页</span>
+            <button onclick="changePage('ongoing', 1)" id="next-ongoing">&gt;</button>
+          </div>
+        </div>
+
+        <div class="section" id="sec-finished">
+          <h3>已结束的演讲</h3>
+          <div class="cards" id="finishedContainer"></div>
+          <div class="pagination" id="pag-finished">
+            <button onclick="changePage('finished', -1)" id="prev-finished">&lt;</button>
+            <span id="info-finished">第 1 页</span>
+            <button onclick="changePage('finished', 1)" id="next-finished">&gt;</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal" id="modal">
+    <div class="modal-box">
+      <h3 id="modalTitle">新建演讲</h3>
+      <input id="speechName" placeholder="演讲名称" />
+<!--      <input id="speaker" placeholder="演讲者ID (必填)" />-->
+      <input id="speechInfo" placeholder="演讲简介" />
+      <input id="startTime" type="datetime-local" placeholder="开始时间" />
+      <input id="duration" type="number" min="1" max="600" placeholder="时长 (分钟)" />
+      <div class="actions">
+        <button class="cancel" onclick="closeModal()">取消</button>
+        <button class="add" onclick="addOrSave()">保存</button>
+      </div>
+    </div>
+  </div>
+<!-- 弹窗遮罩层 -->
+<div id="inviteModal" class="modal" style="display:none; position:fixed; inset:0; background: rgba(0,0,0,0.4); z-index:1000;">
+
+  <!-- 弹窗盒子 -->
+  <div style="
+    background: #fff;
+    border-radius: 8px;
+    padding: 20px;
+    width: 320px;
+    max-width: 90vw;
+    box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    font-family: Arial, sans-serif;
+  ">
+    <h3 style="margin-top:0; margin-bottom: 16px; font-weight: 600;">邀请讲者</h3>
+    <select id="speakerSelect" style="width: 100%; padding: 8px; border-radius: 4px; border: 1px solid #ccc; font-size: 14px;"></select>
+    <div style="margin-top: 16px; display: flex; justify-content: flex-end; gap: 12px;">
+      <button onclick="submitInvitation()" style="
+        background-color: #4caf50;
+        border: none;
+        color: white;
+        padding: 8px 16px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-weight: 600;
+      ">发送邀请</button>
+      <button onclick="closeInvite()" style="
+        background-color: #f44336;
+        border: none;
+        color: white;
+        padding: 8px 16px;
+        border-radius: 4px;
+        cursor: pointer;
+        font-weight: 600;
+      ">取消</button>
+    </div>
+  </div>
+</div>
+<script>
+
+
+let currentLectureIdForInvite = null;
+let currentEditingSpeakerId = ''; // 编辑时缓存的 speaker_id
+const pageSize = 3;
+let all = [];
+let filtered = [];
+let page = { 0: 1, 1: 1, [-1]: 1 };
+let editingId = null;
+
+  userId = sessionStorage.getItem("userId");
+async function fetchUsername(userId) {
+    const res = await fetch(`/user/${encodeURIComponent(userId)}`);
+    if (!res.ok) throw new Error('获取用户信息失败');
+    const data = await res.json();
+    return data.username || '用户';
+  }
+  async function showGreeting() {
+  const userId = sessionStorage.getItem("userId");
+  if (!userId) return;
+
+  try {
+    const username = await fetchUsername(userId);
+    const greetDiv = document.getElementById("greet");
+    if (greetDiv) {
+      greetDiv.textContent = `你好！${username}`;
+    }
+  } catch (err) {
+    console.error("欢迎语加载失败", err);
+  }
+}
+
+
+function onInvitation(lectureId) {
+  currentLectureIdForInvite = lectureId;
+  fetch('/user/')
+    .then(res => res.json())
+    .then(users => {
+      const select = document.getElementById('speakerSelect');
+      select.innerHTML = '';
+      users.forEach(user => {
+        const option = document.createElement('option');
+        option.value = user.id;
+        option.textContent = user.username || user.id;
+        select.appendChild(option);
+      });
+      document.getElementById('inviteModal').style.display = 'block';
+    })
+    .catch(() => alert('加载用户失败'));
+}
+
+function closeInvite() {
+  document.getElementById('inviteModal').style.display = 'none';
+  currentLectureIdForInvite = null;
+}
+
+function submitInvitation() {
+  const speakerId = document.getElementById('speakerSelect').value;
+  if (!speakerId || !currentLectureIdForInvite) {
+    alert('请选择讲者');
+    return;
+  }
+
+  const payload = {
+    speaker_id: speakerId,
+    lecture_id: currentLectureIdForInvite,
+    status: 0
+  };
+
+  fetch('/invitation/create', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload)
+  })
+    .then(res => {
+      if (!res.ok) throw new Error('请求失败');
+      return res.json();
+    })
+    .then(() => {
+      alert('邀请发送成功');
+      closeInvite();
+    })
+    .catch(() => alert('发送失败'));
+}
+
+function renderSection(status) {
+  const arr = filtered.filter(targetLecture => targetLecture.status === status);
+  const total = Math.ceil(arr.length / pageSize) || 1;
+  if (page[status] > total) page[status] = total;
+  const list = arr.slice((page[status] - 1) * pageSize, page[status] * pageSize);
+
+  const statusIdMap = { 0: 'notStarted', 1: 'ongoing', [-1]: 'finished' };
+  const containerId = statusIdMap[status] + 'Container';
+  const cont = document.getElementById(containerId);
+  cont.innerHTML = '';
+
+  list.forEach(targetLecture => {
+    const card = document.createElement('div');
+    card.className = 'card';
+
+    let btns = '';
+    if (status === 0) {
+      btns =
+          ``;
+    } else if (status === 1) {
+      btns = `<button class="enter" onclick="onEnter('${targetLecture.id}')">进入</button>
+              `;
+    } else {
+      btns = `<button class="view" onclick="onView('${targetLecture.id}')">查看</button>
+              `;
+    }
+
+    const statusLabel = status === 0 ? '未开始' : status === 1 ? '进行中' : '已结束';
+
+    const formattedTime = new Date(targetLecture.start_time).toLocaleString('zh-CN', {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+
+    card.innerHTML = `
+      <div class="status ${statusIdMap[status]}">${statusLabel}</div>
+      <h4>${targetLecture.topic}</h4>
+      <div class="time">开始时间：${formattedTime}</div>
+      <div class="duration">时长：${targetLecture.duration} 分钟</div>
+      <div class="desc">${targetLecture.description || ''}</div>
+      <div class="btns">${btns}</div>`;
+
+    cont.appendChild(card);
+  });
+
+  const infoId = 'info-' + statusIdMap[status];
+  document.getElementById(infoId).textContent = `第 ${page[status]} 页 / 共 ${total} 页`;
+  document.getElementById('prev-' + statusIdMap[status]).disabled = page[status] <= 1;
+  document.getElementById('next-' + statusIdMap[status]).disabled = page[status] >= total;
+}
+
+function renderAll() {
+  [0, 1, -1].forEach(renderSection);
+}
+
+function changePage(s, d) {
+  page[s] += d;
+  renderSection(s);
+}
+
+document.getElementById('searchInput').addEventListener('input', e => {
+  const q = e.target.value.toLowerCase();
+  filtered = all.filter(targetLecture => targetLecture.topic && targetLecture.topic.toLowerCase().includes(q));
+  page = { 0: 1, 1: 1, [-1]: 1 };
+  renderAll();
+});
+
+function openModal(edit = false) {
+  editingId = edit;
+  document.getElementById('modalTitle').textContent = edit ? '编辑演讲' : '新建演讲';
+  const targetLecture = all.find(x => x.id === edit) || {};
+  document.getElementById('speechName').value = targetLecture.topic || '';
+  currentEditingSpeakerId = targetLecture.speaker_id || '';
+  document.getElementById('speechInfo').value = targetLecture.description || '';
+  document.getElementById('startTime').value = targetLecture.start_time ? new Date(targetLecture.start_time).toISOString().slice(0, 16) : '';
+  document.getElementById('duration').value = targetLecture.duration || 60;
+  document.getElementById('modal').classList.add('active');
+}
+
+function closeModal() {
+  document.getElementById('modal').classList.remove('active');
+}
+
+function addOrSave() {
+  const name = document.getElementById('speechName').value.trim();
+  const description = document.getElementById('speechInfo').value.trim();
+  const startTime = document.getElementById('startTime').value;
+  const duration = parseInt(document.getElementById('duration').value);
+  const organizer_id = sessionStorage.getItem("userId");
+
+  if (!name || !startTime || !duration || !organizer_id) {
+    alert('请填写完整所有必填项');
+    return;
+  }
+
+  if (editingId) {
+    const original = all.find(x => x.id === editingId);
+    if (!original) {
+      alert('未找到要编辑的演讲');
+      return;
+    }
+
+    const payload = {
+      topic: name,
+      description: description,
+      start_time: new Date(startTime).toISOString(),
+      duration: duration,
+      status: original.status,
+      speaker_id: currentEditingSpeakerId,
+      organizer_id: original.organizer_id
+    };
+
+    fetch(`/lecture/${editingId}`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    })
+      .then(res => {
+        if (!res.ok) throw new Error('更新失败');
+        return res.json();
+      })
+      .then(() => location.reload())
+      .catch(() => alert('更新失败'));
+  } else {
+    const payload = {
+      topic: name,
+      description: description,
+      start_time: new Date(startTime).toISOString(),
+      duration: duration,
+      status: 0,
+      speaker_id: '',
+      organizer_id: organizer_id
+    };
+
+    fetch('/lecture/create', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload)
+    })
+      .then(res => {
+        if (!res.ok) throw new Error('创建失败');
+        return res.json();
+      })
+      .then(() => location.reload())
+      .catch(() => alert('创建失败'));
+  }
+}
+
+function onEdit(id) {
+  openModal(id);
+}
+
+function onDelete(id) {
+  if (!confirm('确认删除该演讲吗？')) return;
+  fetch(`/lecture/${id}`, { method: 'DELETE' })
+    .then(res => {
+      if (!res.ok) throw new Error('删除失败');
+      return res.text();
+    })
+    .then(() => location.reload())
+    .catch(() => alert('删除失败'));
+}
+
+function onStart(id) {
+  const targetLecture = all.find(x => x.id === id);
+  if (!targetLecture) return alert('找不到演讲');
+  fetch(`/lecture/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ...targetLecture, status: 1 })
+  })
+    .then(res => {
+      if (!res.ok) throw new Error('无法开始');
+      return res.json();
+    })
+    .then(() => location.reload())
+    .catch(() => alert('无法开始'));
+}
+
+function onEnd(id) {
+  const targetLecture = all.find(x => x.id === id);
+  if (!targetLecture) return alert('找不到演讲');
+  fetch(`/lecture/${id}`, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ...targetLecture, status: -1 })
+  })
+    .then(res => {
+      if (!res.ok) throw new Error('无法结束');
+      return res.json();
+    })
+    .then(() => location.reload())
+    .catch(() => alert('无法结束'));
+}
+
+function onEnter(id) {
+  window.location.href = `http://127.0.0.1:8000/static/lecture_detail.html?id=${encodeURIComponent(id)}`;
+}
+
+
+function onView(id) {
+  fetch(`/lecture/${id}`)
+    .then(res => {
+      if (!res.ok) throw new Error('获取演讲详情失败');
+      return res.json();
+    })
+    .then(lecture => {
+      const formatted = JSON.stringify(lecture, null, 2);
+      const newWindow = window.open("", "_blank", "width=600,height=400,scrollbars=yes");
+      newWindow.document.write(`<pre style="font-family: monospace; white-space: pre-wrap;">${formatted}</pre>`);
+      newWindow.document.title = "演讲详情";
+      newWindow.document.close();
+    })
+    .catch(err => {
+      alert(err.message || '加载失败');
+    });
+}
+
+function logout() {
+  if (confirm('确认退出登录？')) {
+    location.href = 'login.html';
+  }
+}
+
+function goToPersonal() {
+  const userId = sessionStorage.getItem("userId");
+  if (userId) {
+    window.location.href = `person.html?id=${userId}`;
+  } else {
+    alert("未登录，无法访问个人主页");
+  }
+}
+
+
+window.addEventListener('DOMContentLoaded', async () => {
+  try {
+    // 获取用户名
+    const userId = sessionStorage.getItem("userId");
+    if (userId) {
+      const res = await fetch(`/user/${encodeURIComponent(userId)}`);
+      if (res.ok) {
+        const userData = await res.json();
+        document.getElementById('greet').textContent = `你好！${userData.username || '用户'}`;
+      }
+    }
+
+    // 获取演讲数据
+    const res = await fetch('/lecture/');
+    if (!res.ok) throw new Error("获取演讲列表失败");
+    const data = await res.json();
+
+    all = data.map(item => ({
+      id: item.id,
+      topic: item.topic,
+      speaker_id: item.speaker_id,
+      description: item.description,
+      status: parseInt(item.status),
+      organizer_id: item.organizer_id,
+      start_time: item.start_time,
+      duration: item.duration,
+    }));
+    filtered = [...all];
+    renderAll();
+
+  } catch (err) {
+    console.error("页面初始化失败：", err);
+    alert("页面加载失败，请稍后重试！");
+  }
+});
+
+
+
+   window.addEventListener('DOMContentLoaded', async () => {
+    const userId = sessionStorage.getItem("userId");
+    if (!userId) return;
+
+    try {
+      const res = await fetch(`/user/${encodeURIComponent(userId)}`);
+      if (!res.ok) throw new Error("获取用户信息失败");
+      const data = await res.json();
+      const role = data.role;
+      const nav = document.getElementById('sidebarNav');
+
+      if (role === 0) {
+        const lectureLink = document.createElement('a');
+        lectureLink.href = 'lecture_list.html';
+        lectureLink.textContent = '演讲';
+        nav.appendChild(lectureLink);
+      } else if (role === 1) {
+        const inviteLink = document.createElement('a');
+        inviteLink.href = 'invites.html';
+        inviteLink.textContent = '收到的邀请';
+        nav.appendChild(inviteLink);
+      }else{
+          const lectureLink = document.createElement('a');
+        lectureLink.href = 'lecture_user.html';
+        lectureLink.textContent = '演讲';
+        nav.appendChild(lectureLink);
+      }
+    } catch (err) {
+      console.error("加载导航失败：", err);
+    }
+  });
+</script>
+</body>
+</html>

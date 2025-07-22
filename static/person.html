@@ -457,10 +457,25 @@ setTimeout(() => messageDiv.style.display = 'none', 4000);
         lectureLink.textContent = '演讲';
         nav.appendChild(lectureLink);
       } else if (role === 1) {
+
+
+
         const inviteLink = document.createElement('a');
+
         inviteLink.href = 'invites.html';
         inviteLink.textContent = '收到的邀请';
         nav.appendChild(inviteLink);
+
+         // 链接2：我的演讲
+      const speakerLink = document.createElement('a');
+      speakerLink.href = 'lecture_speaker.html';
+      speakerLink.textContent = '我的演讲';
+      nav.appendChild(speakerLink);
+      }else{
+          const lectureLink = document.createElement('a');
+        lectureLink.href = 'lecture_user.html';
+        lectureLink.textContent = '演讲';
+        nav.appendChild(lectureLink);
       }
     } catch (err) {
       console.error("加载导航失败：", err);

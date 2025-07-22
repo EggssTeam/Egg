@@ -256,192 +256,168 @@
 
 <script>
   let userId = sessionStorage.getItem("userId");
-let invites = [];
-let currentInvite = null;
-let username = '用户';
+  let invites = [];
+  let currentInvite = null;
+  let username = '用户';
 
-// 跳转个人主页
-function goToPersonal() {
-  if (userId) {
-    window.location.href = `person.html?id=${userId}`;
-  } else {
-    alert("未登录，无法访问个人主页");
-  }
-}
-
-// 获取用户名
-async function fetchUsername(userId) {
-  const res = await fetch(`/user/${encodeURIComponent(userId)}`);
-  if (!res.ok) throw new Error('获取用户信息失败');
-  const data = await res.json();
-  return data.username || '用户';
-}
-
-// 根据演讲ID获取演讲详情
-async function fetchLecture(lectureId) {
-  const res = await fetch(`/lecture/${encodeURIComponent(lectureId)}`);
-  if (!res.ok) throw new Error('获取演讲详情失败');
-  return await res.json();
-}
-
-// 获取邀请列表，并附带演讲详细信息
-async function fetchInvites() {
-  try {
-    if (!userId) return;
-    const res = await fetch(`/invitation/byspeaker/${encodeURIComponent(userId)}`);
-    if (!res.ok) throw new Error('请求邀请失败');
-    const invitations = await res.json();
-
-    const detailedInvites = await Promise.all(invitations.map(async invite => {
-      const lecture = await fetchLecture(invite.lecture_id);
-      return {
-        id: invite.id,
-        lecture_id: invite.lecture_id,
-        title: lecture.topic || '无标题',
-        desc: lecture.description || '',
-        organizer: lecture.organizer_id || '未知',
-        time: lecture.start_time ? new Date(lecture.start_time).toLocaleString() : '未知时间',
-        status: invite.status
-      };
-    }));
-
-    invites = detailedInvites;
-    renderInvites();
-
-  } catch (err) {
-    alert(err.message);
-  }
-}
-
-// 渲染邀请列表
-function renderInvites() {
-  const container = document.getElementById('inviteList');
-  if (!container) return;
-
-  container.innerHTML = '';
-  let readStatus = {};
-  try {
-    readStatus = JSON.parse(localStorage.getItem('readInvites') || '{}');
-  } catch {
-    readStatus = {};
-  }
-
-  invites.sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime());
-
-  invites.forEach(invite => {
-    const isRead = !!readStatus[invite.id];
-    const card = document.createElement('div');
-    card.className = 'invite-card';
-    card.setAttribute('data-id', invite.id);
-
-    card.innerHTML = `
-      <div class="invite-content" onclick="showDetails('${invite.id}')">
-        <div class="invite-title">${invite.title}</div>
-        <div class="invite-organizer">组织者：${invite.organizer}</div>
-        <div class="invite-desc">${invite.desc}</div>
-        <div class="invite-status">状态：${invite.status === 0 ? '待回应' : invite.status === 1 ? '已接受' : '已拒绝'}</div>
-        <div class="invite-time">邀请时间：${invite.time}</div>
-      </div>
-      <span class="status-tag ${isRead ? 'status-read' : 'status-unread'}">${isRead ? '已读' : '未读'}</span>
-    `;
-
-    container.appendChild(card);
-  });
-
-  updateSidebarUnread();
-}
-
-// 显示邀请详情弹窗
-function showDetails(id) {
-  const invite = invites.find(i => i.id === id);
-  if (!invite) return;
-
-  currentInvite = invite;
-
-  const modal = document.getElementById('inviteModal');
-  if (!modal) return;
-
-  document.getElementById('modalTitle').textContent = invite.title;
-  document.getElementById('modalOrganizer').textContent = invite.organizer;
-  document.getElementById('modalDescription').textContent = invite.desc;
-  modal.classList.add('active');
-
-  // 按钮状态控制：如果已接受，则禁用按钮
-  const acceptBtn = document.getElementById('acceptBtn');
-  const rejectBtn = document.getElementById('rejectBtn');
-  if (acceptBtn && rejectBtn) {
-    acceptBtn.disabled = invite.status === 1;
-    rejectBtn.disabled = invite.status === 1;
-  }
-
-  // 标记为已读
-  let readStatus = {};
-  try {
-    readStatus = JSON.parse(localStorage.getItem('readInvites') || '{}');
-  } catch {
-    readStatus = {};
-  }
-  readStatus[invite.id] = true;
-  localStorage.setItem('readInvites', JSON.stringify(readStatus));
-
-  renderInvites();
-}
-
-// 更新邀请状态（接受或拒绝）
-async function updateInviteStatus(status) {
-  if (!currentInvite || !userId) return;
-
-  const payload = {
-    lecture_id: currentInvite.lecture_id,
-    speaker_id: userId,
-    status: status
-  };
-
-  try {
-    let url = '';
-    if (status === 1) {
-      url = `/invitation/accept/${encodeURIComponent(currentInvite.id)}`;
+  function goToPersonal() {
+    const userId = sessionStorage.getItem("userId");
+    if (userId) {
+      window.location.href = `person.html?id=${userId}`;
     } else {
-      url = `/invitation/${encodeURIComponent(currentInvite.id)}`;
+      alert("未登录，无法访问个人主页");
     }
+  }
 
-    const res = await fetch(url, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(payload)
+  async function fetchUsername(userId) {
+    const res = await fetch(`/user/${encodeURIComponent(userId)}`);
+    if (!res.ok) throw new Error('获取用户信息失败');
+    const data = await res.json();
+    return data.username || '用户';
+  }
+
+  async function fetchLecture(lectureId) {
+    const res = await fetch(`/lecture/${encodeURIComponent(lectureId)}`);
+    if (!res.ok) throw new Error('获取演讲详情失败');
+    return await res.json();
+  }
+
+  async function fetchInvites() {
+    try {
+      const res = await fetch(`/invitation/byspeaker/${encodeURIComponent(userId)}`);
+      if (!res.ok) throw new Error('请求邀请失败');
+      const invitations = await res.json();
+
+      const detailedInvites = await Promise.all(invitations.map(async invite => {
+        const lecture = await fetchLecture(invite.lecture_id);
+        return {
+          id: invite.id,
+          lecture_id: invite.lecture_id,
+          title: lecture.topic || '无标题',
+          desc: lecture.description || '',
+          organizer: username,
+          time: lecture.start_time ? new Date(lecture.start_time).toLocaleString() : '未知时间',
+          status: invite.status
+        };
+      }));
+
+      invites = detailedInvites;
+      renderInvites();
+
+    } catch (err) {
+      alert(err.message);
+    }
+  }
+
+  function renderInvites() {
+    const container = document.getElementById('inviteList');
+    container.innerHTML = '';
+    const readStatus = JSON.parse(localStorage.getItem('readInvites') || '{}');
+
+    invites.sort((a, b) => new Date(b.time).getTime() - new Date(a.time).getTime());
+
+    invites.forEach(invite => {
+      const isRead = readStatus[invite.id] === true;
+      const card = document.createElement('div');
+      card.className = 'invite-card';
+      card.setAttribute('data-id', invite.id);
+
+      card.innerHTML = `
+        <div class="invite-content" onclick="showDetails('${invite.id}')">
+          <div class="invite-title">${invite.title}</div>
+          <div class="invite-organizer">演讲者：${invite.organizer}</div>
+          <div class="invite-desc">${invite.desc}</div>
+          <div class="invite-status">状态：${invite.status === 0 ? '待回应' : invite.status === 1 ? '已接受' : '已拒绝'}</div>
+          <div class="invite-time">邀请时间：${invite.time}</div>
+        </div>
+        <span class="status-tag ${isRead ? 'status-read' : 'status-unread'}">${isRead ? '已读' : '未读'}</span>
+      `;
+      container.appendChild(card);
     });
 
-    if (!res.ok) throw new Error('更新失败');
-    alert(status === 1 ? '你已接受邀请' : '你已拒绝邀请');
-
-    document.getElementById('inviteModal').classList.remove('active');
-    currentInvite = null;
-
-    await fetchInvites();
-  } catch (err) {
-    alert(err.message);
+    updateSidebarUnread();
   }
-}
 
-// 退出登录
-function logout() {
-  if (confirm('确认退出登录？')) {
-    sessionStorage.clear();
-    window.location.href = 'login.html';
-  }
-}
+  function showDetails(id) {
+    const invite = invites.find(i => i.id === id);
+    if (!invite) return;
 
-// 侧边栏未读提醒更新
-function updateSidebarUnread() {
-  let readStatus = {};
-  try {
-    readStatus = JSON.parse(localStorage.getItem('readInvites') || '{}');
-  } catch {
-    readStatus = {};
+    currentInvite = invite;
+
+    document.getElementById('modalTitle').textContent = invite.title;
+    document.getElementById('modalOrganizer').textContent = invite.organizer;
+    document.getElementById('modalDescription').textContent = invite.desc;
+    document.getElementById('inviteModal').classList.add('active');
+
+    // 控制按钮状态
+    document.getElementById('acceptBtn').disabled = invite.status === 1;
+    document.getElementById('rejectBtn').disabled = invite.status === 1;
+
+    const readStatus = JSON.parse(localStorage.getItem('readInvites') || '{}');
+    readStatus[invite.id] = true;
+    localStorage.setItem('readInvites', JSON.stringify(readStatus));
+
+    renderInvites();
   }
+
+  async function updateInviteStatus(status) {
+    if (!currentInvite) return;
+
+    const payload = {
+      lecture_id: currentInvite.lecture_id,
+      speaker_id: userId,
+      status: status
+    };
+
+    try {
+      let url = '';
+      if (status === 1) {
+        url = `/invitation/accept/${encodeURIComponent(currentInvite.id)}`;
+      } else {
+        url = `/invitation/${encodeURIComponent(currentInvite.id)}`;
+      }
+
+      const res = await fetch(url, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload)
+      });
+
+      if (!res.ok) throw new Error('更新失败');
+      alert(status === 1 ? '你已接受邀请' : '你已拒绝邀请');
+      document.getElementById('inviteModal').classList.remove('active');
+      currentInvite = null;
+      await fetchInvites();
+    } catch (err) {
+      alert(err.message);
+    }
+  }
+
+  function logout() {
+    if (confirm('确认退出登录？')) {
+      window.location.href = 'login.html';
+    }
+  }
+
+  document.getElementById('inviteModal').addEventListener('click', function(e) {
+    if (e.target === this) this.classList.remove('active');
+  });
+
+  // function updateSidebarUnread() {
+  //   const readStatus = JSON.parse(localStorage.getItem('readInvites') || '{}');
+  //   const hasUnread = invites.some(invite => !readStatus[invite.id]);
+  //   const inviteNavLink = document.getElementById('invitesNavLink');
+  //   if (hasUnread) {
+  //     inviteNavLink.classList.add('unread-indicator');
+  //   } else {
+  //     inviteNavLink.classList.remove('unread-indicator');
+  //   }
+  // }
+  function updateSidebarUnread() {
+  const readStatus = JSON.parse(localStorage.getItem('readInvites') || '{}');
   const hasUnread = invites.some(invite => !readStatus[invite.id]);
   const inviteNavLink = document.getElementById('invitesNavLink');
-  if (!inviteNavLink) return;
+  if (!inviteNavLink) return;  // 加这句避免null报错
   if (hasUnread) {
     inviteNavLink.classList.add('unread-indicator');
   } else {
@@ -449,58 +425,61 @@ function updateSidebarUnread() {
   }
 }
 
-// 点击模态框空白关闭弹窗
-window.addEventListener('DOMContentLoaded', () => {
-  const inviteModal = document.getElementById('inviteModal');
-  if (inviteModal) {
-    inviteModal.addEventListener('click', function(e) {
-      if (e.target === this) this.classList.remove('active');
-    });
-  }
-});
 
-// 页面初始化
-window.onload = async () => {
-  try {
-    if (!userId) {
-      alert('未登录，请先登录');
-      window.location.href = 'login.html';
-      return;
+  window.onload = async () => {
+    try {
+      username = await fetchUsername(userId);
+      document.getElementById('userGreeting').textContent = `你好！${username}`;
+      await fetchInvites();
+    } catch (e) {
+      alert(e.message);
     }
-    username = await fetchUsername(userId);
-    const greetDiv = document.getElementById('userGreeting');
-    if (greetDiv) {
-      greetDiv.textContent = `你好！${username}`;
-    }
+  };
 
-    // 加载侧边栏导航
-    const res = await fetch(`/user/${encodeURIComponent(userId)}`);
-    if (!res.ok) throw new Error("获取用户信息失败");
-    const data = await res.json();
-    const role = data.role;
-    const nav = document.getElementById('sidebarNav');
-    if (nav) {
+
+
+   window.addEventListener('DOMContentLoaded', async () => {
+    const userId = sessionStorage.getItem("userId");
+    if (!userId) return;
+
+    try {
+      const res = await fetch(`/user/${encodeURIComponent(userId)}`);
+      if (!res.ok) throw new Error("获取用户信息失败");
+      const data = await res.json();
+      const role = data.role;
+      const nav = document.getElementById('sidebarNav');
+
       if (role === 0) {
         const lectureLink = document.createElement('a');
         lectureLink.href = 'lecture_list.html';
         lectureLink.textContent = '演讲';
         nav.appendChild(lectureLink);
       } else if (role === 1) {
+
+
+
         const inviteLink = document.createElement('a');
+
         inviteLink.href = 'invites.html';
         inviteLink.textContent = '收到的邀请';
-        inviteLink.id = 'invitesNavLink';
         nav.appendChild(inviteLink);
+
+         // 链接2：我的演讲
+      const speakerLink = document.createElement('a');
+      speakerLink.href = 'lecture_speaker.html';
+      speakerLink.textContent = '我的演讲';
+      nav.appendChild(speakerLink);
+      }else{
+          const lectureLink = document.createElement('a');
+        lectureLink.href = 'lecture_user.html';
+        lectureLink.textContent = '演讲';
+        nav.appendChild(lectureLink);
       }
+    } catch (err) {
+      console.error("加载导航失败：", err);
     }
+  });
 
-    // 加载邀请列表
-    await fetchInvites();
-
-  } catch (e) {
-    alert(e.message);
-  }
-};
 
 </script>
 </body>

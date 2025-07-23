@@ -1,588 +1,180 @@
-import base64
-from wsgiref.validate import validator
-
-from fastapi import FastAPI, UploadFile, HTTPException, Form, Body
-from fastapi.responses import HTMLResponse, FileResponse
-# from fastapi.templating import Jinja2Templates
-# from templates import templates
-from fastapi.requests import Request
-from pptx import Presentation
-from pymongo import MongoClient
-from starlette.responses import RedirectResponse
-
-from db import collection, user_collection
-from deepseek_client import generate_questions, extract_text_from_file  # 调用 DeepSeek API 生成问题
-from deepseek_local_model import generate_questions_local  # 调用本地 DeepSeek 模型生成问题
-import uvicorn
-from datetime import datetime
-from typing import List, Dict
-from pydantic import BaseModel
-import re
-
-from bson import ObjectId
-from fastapi.responses import JSONResponse
-from pdfminer.high_level import extract_text
-
-import io
-import httpx
-from fastapi import FastAPI, UploadFile, File, HTTPException
-import requests
+# 内置库
 import os
+import io
+import random
+import tempfile
+from datetime import datetime
 
-from fastapi import FastAPI, HTTPException, Depends
-from pydantic import BaseModel, EmailStr
-from pydantic import BaseModel, EmailStr, validator
-import re
-from passlib.context import CryptContext
-from fastapi import FastAPI, HTTPException, status, Depends
-from pydantic import BaseModel, EmailStr, validator
-from passlib.context import CryptContext
-from pymongo import MongoClient
-import re
 
+# 第三方库
+import uvicorn
+import requests
+from fastapi import FastAPI, UploadFile, File, Form
+from fastapi.responses import FileResponse, JSONResponse
+from fastapi.staticfiles import StaticFiles
+from moviepy import VideoFileClip
+from pptx import Presentation
+
+# 配置相关
+from config import OPENAI_API_KEY, WHISPER_API_URL, GPT4O_API_URL
+
+# 自定义模块
+from db import collection
+from ai_client import (
+    generate_questions,
+    extract_text_from_file,
+    extract_images_from_pdf,
+    analyze_images_with_o4,
+    extract_images_from_pptx,
+)
 from invitation import invitation_router
 from lecture import lecture_router
-from user import user_router, verify_password
+from user import user_router
 from question import question_router
-from fastapi.staticfiles import StaticFiles
+
 
 
 
 app = FastAPI()
-
-# 设置模板路径
-# templates = Jinja2Templates(directory="templates")
-
-# # MongoDB 配置
-# client = MongoClient("mongodb://localhost:27017/")
-# db = client["mydb"]
-# collection = db["qa_collection"]
-# user_collection = db["user"]
-
 app.include_router(invitation_router, prefix="/invitation", tags=["invitation"])
-
 app.include_router(question_router, prefix="/question", tags=["Question"])
-
-
-# 加载路由
 app.include_router(user_router, prefix="/user", tags=["User"])
 app.include_router(lecture_router, prefix="/lecture", tags=["Lecture"])
 
-#
-# app.mount("/", StaticFiles(directory="static", html=True), name="static")
-
 app.mount("/static", StaticFiles(directory="static", html=True), name="static")
+@app.get("/", response_class=FileResponse)
+async def serve_login_page():
+    return FileResponse("static/login.html")
 
-# 新的初始页面 / ，可以返回一个新的 HTML 文件，例如：home.html
-# @app.get("/", response_class=HTMLResponse)
-# async def get_home():
-#     return FileResponse("templates/login.html")  # 这是你设置的新初始界面
-
-# 把 static 文件夹挂载到 /lecture_list 路径下，且html文件默认访问 lecture_list.html
-# app.mount("/lecture_list", StaticFiles(directory="static", html=True), name="lecture_list")
-#
-# @app.get("/lecture_list")
-# async def lecture_list():
-#     return FileResponse("static/lecture_list.html")
-#
-# @app.get("/lecture_detail.html")
-# async def lecture_detail():
-#     return FileResponse("static/lecture_detail.html")
-
-#
-#
-# # 设置登录页面
-# @app.get("/", response_class=HTMLResponse)
-# async def login_page(request: Request):
-#     return templates.TemplateResponse("login.html", {"request": request})
-#
-# @app.get("/personal", response_class=HTMLResponse)
-# async def login_page(request: Request):
-#     return templates.TemplateResponse("personal.html", {"request": request})
-#
-#
-# @app.get("/register", response_class=HTMLResponse)
-# async def login_page(request: Request):
-#     return templates.TemplateResponse("register.html", {"request": request})
-
-# 处理登录接口，使用 Body 来接收 JSON 格式数据
-# @app.post("/login")
-# async def login(user: dict = Body(...)):
-#     email = user.get("email")
-#     password = user.get("password")
-#
-#     if email == "user@example.com" and password == "password123":
-#         return RedirectResponse(url="/index", status_code=303)
-#     raise HTTPException(status_code=401, detail="Invalid credentials")
-#
-# # 路由：主页
-# @app.get("/index", response_class=HTMLResponse)
-# async def get_index():
-#     return FileResponse("templates/person.html")
-
-
-# 路由：上传文件并调用 DeepSeek API 生成选择题
-@app.post("/upload")
-async def upload_file(file: UploadFile):
-    content = (await file.read()).decode("utf-8")
+# ========== 上传并处理文件 ==========-----txt--pptx--pdf--audio--video-----
+@app.post("/upload_any_file")
+async def upload_any_file(file: UploadFile = File(...), lecture_id: str = Form(None)):
     try:
-        # 调用 DeepSeek API 生成问题
-        questions = generate_questions(content)
+        ext = os.path.splitext(file.filename)[-1].lower()
+        text = ""
+        audio_bytes = None
+        image_analysis_text = ""
+        text_questions = []
+        image_questions = []
 
-        # 检查是否有问题数据
-        if not questions:
-            raise ValueError("生成的选择题为空，请检查输入文本或API响应")
+        if ext == ".txt":
+            content = await file.read()
+            text = content.decode("utf-8", errors="ignore").strip()
+            await file.seek(0)
 
-        # 将每个问题作为一个独立文档插入到 MongoDB
-        documents = []
-        for question in questions:
-            doc = {
-                "filename": file.filename,
-                "question": question["question"],
-                "options": question["options"],  # 存储字典
-                "correct_answer": question["correct_answer"],
-                "source": "DeepSeek API",
-                "created_at": datetime.now()  # 增加时间戳
-            }
-            documents.append(doc)
+        elif ext == ".pdf":
+            content = await file.read()
+            file_stream = io.BytesIO(content)
+            text = extract_text_from_file(file_stream, suffix="pdf")
+            images = extract_images_from_pdf(file_stream)
 
-        # 确保列表非空后才执行插入
-        if documents:
-            collection.insert_many(documents)
+            if images:
+                selected_images = random.sample(images, min(3, len(images)))
+                image_analysis_text = analyze_images_with_o4(selected_images)
+                image_questions = generate_questions(image_analysis_text)
+
+            if text.strip():
+                text_questions = generate_questions(text)
+
+            if not text.strip() and not image_questions:
+                raise ValueError("PDF 文件中未提取到有效内容")
+
+        elif ext == ".pptx":
+            content = await file.read()
+            text = extract_text_from_file(io.BytesIO(content), suffix="pptx")
+            if not text.strip():
+                raise ValueError("PPTX 文件中未提取到文本内容")
+            text_questions = generate_questions(text)
+
+            images = extract_images_from_pptx(io.BytesIO(content))
+            if images:
+                selected_images = random.sample(images, min(3, len(images)))
+                image_analysis_text = analyze_images_with_o4(selected_images)
+                image_questions = generate_questions(image_analysis_text)
+
+        elif ext in [".mp3", ".wav", ".m4a", ".aac"]:
+            audio_bytes = await file.read()
+
+        elif ext in [".mp4", ".avi", ".mov", ".mkv"]:
+            with tempfile.NamedTemporaryFile(delete=False, suffix=ext) as tmp_video:
+                tmp_video.write(await file.read())
+                tmp_video_path = tmp_video.name
+
+            tmp_audio_path = tmp_video_path + ".mp3"
+            try:
+                video_clip = VideoFileClip(tmp_video_path)
+                video_clip.audio.write_audiofile(tmp_audio_path)
+                video_clip.close()
+
+                with open(tmp_audio_path, "rb") as f:
+                    audio_bytes = f.read()
+            finally:
+                if os.path.exists(tmp_video_path):
+                    os.remove(tmp_video_path)
+                if os.path.exists(tmp_audio_path):
+                    os.remove(tmp_audio_path)
+
         else:
-            raise ValueError("没有有效的选择题可以插入数据库")
+            raise ValueError("不支持的文件类型，请上传 txt/pdf/pptx/音频/视频")
 
-        return {
-            "message": "生成完成，选择题已存入数据库（DeepSeek API）。",
-            "qa": questions  # 返回生成的问题
-        }
-    except Exception as e:
-        return {"error": f"处理失败: {str(e)}"}
+        # 处理音频转录和生成问题
+        if audio_bytes:
+            whisper_response = requests.post(
+                WHISPER_API_URL,
+                headers={"Authorization": f"Bearer {OPENAI_API_KEY}"},
+                files={
+                    "file": (file.filename, audio_bytes, file.content_type or "application/octet-stream"),
+                    "model": (None, "whisper-1")
+                },
+                timeout=60
+            )
+            whisper_response.raise_for_status()
+            transcribed = whisper_response.json()
+            text = transcribed.get("text", "").strip()
+            if not text:
+                raise ValueError("Whisper API 未返回有效文本")
+            text_questions = generate_questions(text)
 
-    import io
-    from fastapi.responses import JSONResponse
-    from pdfminer.high_level import extract_text
-#
-# @app.post("/upload_pdf")
-# async def upload_pdf(file: UploadFile):
-#     try:
-#         content = await file.read()
-#
-#         pdf_stream = io.BytesIO(content)
-#
-#         text = extract_text(pdf_stream)
-#         if not text.strip():
-#             raise ValueError("PDF文本提取为空")
-#
-#         questions = generate_questions(text)
-#         if not questions:
-#             raise ValueError("生成的选择题为空，请检查输入文本或API响应")
-#
-#         documents = []
-#         for q in questions:
-#             documents.append({
-#                 "filename": file.filename,
-#                 "question": q["question"],
-#                 "options": q["options"],
-#                 "correct_answer": q["correct_answer"],
-#                 "source": "DeepSeek API",
-#                 "created_at": datetime.now()
-#             })
-#
-#         if documents:
-#             collection.insert_many(documents)
-#
-#         return {"message": "处理成功，选择题已存入数据库", "qa": questions}
-#
-#     except Exception as e:
-#         print(f"/upload_pdf 出错: {e}")
-#         return JSONResponse(content={"error": f"处理失败: {str(e)}"}, status_code=500)
+        # print(f"text_questions count: {len(text_questions)}")
+        # print(f"image_questions count: {len(image_questions)}")
+        # print(f"image_analysis_text: {image_analysis_text[:200]}")
+        # print(f"text snippet: {text[:100]}")
 
+        # 保存问题
+        all_questions = text_questions + image_questions
+        if not all_questions:
+            raise ValueError("未生成任何选择题")
 
-from fastapi import UploadFile, File, Form
-
-
-
-
-
-
-@app.post("/upload_file")
-async def upload_file(
-    file: UploadFile = File(...),
-    lecture_id: str = Form(...)
-):
-    try:
-        # 提取文本（支持 PDF 和 PPTX）
-        text = extract_text_from_file(file)
-        if not text.strip():
-            raise ValueError("文件中未提取到文本内容")
-
-        # 生成选择题
-        questions = generate_questions(text)
-        if not questions:
-            raise ValueError("生成的选择题为空，请检查输入文本或API响应")
-
-        # 构造文档列表入库
-        documents = []
-        for q in questions:
-            documents.append({
-                "filename": file.filename,
+        docs = []
+        for q in all_questions:
+            source = (
+                "音频/视频 + Whisper + DeepSeek" if audio_bytes else
+                "图像 + GPT-4o + DeepSeek" if q in image_questions else
+                "文本 + DeepSeek"
+            )
+            docs.append({
                 "lecture_id": lecture_id,
-                "question": q["question"],
-                "options": q["options"],
-                "correct_answer": q["correct_answer"],
-                "source": "DeepSeek API",
-                "created_at": datetime.now()
-            })
-
-        if documents:
-            collection.insert_many(documents)
-
-        return {"message": "处理成功，选择题已存入数据库", "qa": questions}
-
-    except Exception as e:
-        print(f"/upload_file 出错: {e}")
-        return JSONResponse(content={"error": f"处理失败: {str(e)}"}, status_code=500)
-
-
-
-
-
-@app.post("/upload_pdf")
-async def upload_pdf(
-    file: UploadFile = File(...),
-    lecture_id: str = Form(...)  # 添加这个参数
-):
-    try:
-        content = await file.read()
-        pdf_stream = io.BytesIO(content)
-
-        text = extract_text(pdf_stream)
-        if not text.strip():
-            raise ValueError("PDF文本提取为空")
-
-        questions = generate_questions(text)
-        if not questions:
-            raise ValueError("生成的选择题为空，请检查输入文本或API响应")
-
-        documents = []
-        for q in questions:
-            documents.append({
-                "filename": file.filename,
-                "lecture_id": lecture_id,  # 加入 lecture_id
-                "question": q["question"],
-                "options": q["options"],
-                "correct_answer": q["correct_answer"],
-                "source": "DeepSeek API",
-                "created_at": datetime.now()
-            })
-
-        if documents:
-            collection.insert_many(documents)
-
-        return {"message": "处理成功，选择题已存入数据库", "qa": questions}
-
-    except Exception as e:
-        print(f"/upload_pdf 出错: {e}")
-        return JSONResponse(content={"error": f"处理失败: {str(e)}"}, status_code=500)
-
-
-@app.post("/upload_local")
-async def upload_file_local(file: UploadFile):
-    """
-    上传文件并用本地 DeepSeek 模型生成选择题
-    修改点：
-    1. 更严格的错误处理
-    2. 适配新的 generate_questions_local() 返回格式
-    3. 优化数据库文档结构
-    """
-    try:
-        # 读取文件内容
-        content = (await file.read()).decode("utf-8")
-        if not content.strip():
-            raise HTTPException(status_code=400, detail="文件内容为空")
-
-        # 调用本地模型生成问题
-        generated_questions = generate_questions_local(content)
-        if not generated_questions:
-            raise HTTPException(status_code=500, detail="模型未能生成有效问题")
-
-        # 构建 MongoDB 文档
-        documents = []
-        for question in generated_questions:
-            doc = {
-                "filename": file.filename,
-                "question": question["question"],
-                "options": question["options"],  # 改为统一存储为字典
-                "correct_answer": question["correct_answer"],
-                "source": "deepseek_local",
-                "created_at": datetime.now()
-            }
-            documents.append(doc)
-
-        # 批量插入数据库
-        if documents:
-            result = collection.insert_many(documents)
-            return {
-                "message": f"成功生成并存储 {len(result.inserted_ids)} 道选择题",
-                "qa": generated_questions
-            }
-        else:
-            raise HTTPException(status_code=500, detail="没有有效数据可存储")
-
-    except HTTPException as he:
-        raise he  # 直接传递已处理的HTTP异常
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=f"服务器错误: {str(e)}")
-
-# https://api.openai.com/v1/audio/transcriptions
-
-# 宏定义 Whisper API 地址和你的API KEY
-WHISPER_API_URL = "https://api.gpt.ge/v1/audio/transcriptions"
-GPT4O_API_URL = "https://api.gpt.ge/v1/chat/completions"
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-#
-# @app.post("/upload_audio/")
-# async def upload_audio(file: UploadFile = File(...)):
-#     if not file.content_type.startswith("audio/"):
-#         raise HTTPException(status_code=400, detail="请上传音频文件")
-#
-#     audio_bytes = await file.read()
-#
-#     headers = {
-#         "Authorization": f"Bearer {OPENAI_API_KEY}"
-#     }
-#     files = {
-#         "file": (file.filename, audio_bytes, file.content_type),
-#         "model": (None, "whisper-1"),
-#     }
-#
-#     async with httpx.AsyncClient() as client:
-#         response = await client.post(WHISPER_API_URL, headers=headers, files=files)
-#         print("接口返回内容：", response.text)  # <----- 这里打印接口响应原始内容
-#
-#     if response.status_code != 200:
-#         return JSONResponse(status_code=response.status_code, content={"error": response.text})
-#
-#     result = response.json()
-#     text = result.get("text", "")
-#
-#     # 存入 MongoDB
-#     doc = {
-#         "filename": file.filename,
-#         "transcription": text,
-#         "source": "whisper_api",
-#         "created_at": datetime.utcnow()
-#     }
-#     collection.insert_one(doc)
-#
-#     return {"text": text, "message": "已存入数据库"}
-
-
-
-@app.post("/upload_audio/")
-async def upload_audio(file: UploadFile = File(...)):
-    """
-    接收音频文件 -> Whisper识别 -> DeepSeek生成题目 -> 存入数据库
-    """
-    try:
-        # 读取音频数据
-        audio_bytes = await file.read()
-
-        # 调用Whisper API
-        whisper_headers = {
-            "Authorization": f"Bearer {OPENAI_API_KEY}"
-        }
-        whisper_files = {
-            "file": (file.filename, audio_bytes, file.content_type),
-            "model": (None, "whisper-1")
-        }
-
-        whisper_response = requests.post(
-            WHISPER_API_URL,
-            headers=whisper_headers,
-            files=whisper_files,
-            timeout=60
-        )
-        whisper_response.raise_for_status()
-        whisper_result = whisper_response.json()
-        transcribed_text = whisper_result["text"]
-
-        if not transcribed_text.strip():
-            raise ValueError("Whisper API 未返回有效文本")
-
-        # 调用 DeepSeek 生成选择题
-        questions = generate_questions(transcribed_text)
-
-        if not questions:
-            raise ValueError("生成的选择题为空，请检查输入文本或API响应")
-
-        # 插入MongoDB
-        documents = []
-        for q in questions:
-            documents.append({
                 "filename": file.filename,
                 "question": q["question"],
                 "options": q["options"],
                 "correct_answer": q["correct_answer"],
-                "source": "Whisper + DeepSeek",
+                "source": source,
                 "created_at": datetime.now()
             })
 
-        collection.insert_many(documents)
+        collection.insert_many(docs)
 
         return {
-            "message": "音频识别完成，选择题已存入数据库",
-            "transcribed_text": transcribed_text,
-            "qa": questions
+            "message": "处理成功，选择题已存入数据库",
+            "qa_text": text_questions,
+            "qa_image": image_questions,
+            "text": text,
+            "image_summary": image_analysis_text or None
         }
 
     except Exception as e:
-        return JSONResponse(
-            status_code=500,
-            content={"error": f"处理失败: {str(e)}"}
-        )
-
-@app.post("/analyze_file/")
-async def analyze_file(file: UploadFile = File(...)):
-    # 读取文件内容
-    content_bytes = await file.read()
-    try:
-        content_text = content_bytes.decode("utf-8")
-    except UnicodeDecodeError:
-        content_text = content_bytes.decode("latin1")
-
-    # 请求 GPT-4o 分析文本内容
-    headers = {
-        "Authorization": f"Bearer {OPENAI_API_KEY}",
-        "Content-Type": "application/json"
-    }
-
-    payload = {
-        "model": "gpt-4o",
-        "messages": [
-            {"role": "system", "content": "你是一个能够理解并总结文件内容的AI助手。"},
-            {"role": "user", "content": f"请分析以下文本并生成简洁的总结：\n\n{content_text}"}
-        ],
-        "temperature": 0.3
-    }
-
-    async with httpx.AsyncClient(timeout=30.0) as client:
-        response = await client.post(GPT4O_API_URL, headers=headers, json=payload)
-        if response.status_code != 200:
-            return {"error": f"OpenAI API 请求失败: {response.status_code}", "detail": response.text}
-        result = response.json()
-
-    summary_text = result["choices"][0]["message"]["content"].strip()
-
-    # 存入 MongoDB
-    doc = {
-        "filename": file.filename,
-        "original_text": content_text,
-        "summary": summary_text,
-        "created_at": datetime.now()
-    }
-    collection.insert_one(doc)
-
-    return {
-        "filename": file.filename,
-        "summary": summary_text
-    }
-
-
-
-
-
-
-
-headers = {
-    "Authorization": f"Bearer {OPENAI_API_KEY}",
-    "Content-Type": "application/json"
-}
-
-
-def extract_images_from_pptx(file_bytes: bytes) -> list:
-    prs = Presentation(io.BytesIO(file_bytes))
-    image_list = []
-
-    for slide_num, slide in enumerate(prs.slides):
-        for shape in slide.shapes:
-            if shape.shape_type == 13:  # PICTURE
-                image = shape.image
-                image_bytes = image.blob
-                mime_type = image.content_type  # e.g., image/png
-
-                image_base64 = base64.b64encode(image_bytes).decode("utf-8")
-                image_list.append({
-                    "data": image_base64,
-                    "mime_type": mime_type,
-                    "slide": slide_num + 1
-                })
-
-    return image_list
-
-
-async def analyze_image_with_gpt4o(image_base64: str, mime_type: str) -> str:
-    payload = {
-        "model": "gpt-4o",
-        "messages": [
-            {
-                "role": "user",
-                "content": [
-                    {"type": "text", "text": "请分析这张幻灯片中的图像内容，并尽可能解释它表达了什么。"},
-                    {
-                        "type": "image_url",
-                        "image_url": {
-                            "url": f"data:{mime_type};base64,{image_base64}"
-                        }
-                    }
-                ]
-            }
-        ],
-        "temperature": 0.3
-    }
-
-    async with httpx.AsyncClient(timeout=60.0) as client:
-        response = await client.post(GPT4O_API_URL, headers=headers, json=payload)
-        response.raise_for_status()
-        result = response.json()
-
-    return result["choices"][0]["message"]["content"]
-
-
-@app.post("/analyze_pptx_images/")
-async def analyze_pptx_images(file: UploadFile = File(...)):
-    file_bytes = await file.read()
-    images = extract_images_from_pptx(file_bytes)
-
-    if not images:
-        return {"filename": file.filename, "message": "没有找到图片"}
-
-    results = []
-    for idx, image in enumerate(images):
-        try:
-            analysis = await analyze_image_with_gpt4o(image["data"], image["mime_type"])
-        except Exception as e:
-            analysis = f"分析失败: {str(e)}"
-
-        results.append({
-            "slide": image["slide"],
-            "result": analysis
-        })
-
-    return {
-        "filename": file.filename,
-        "total_images": len(images),
-        "results": results
-    }
-
-
-
-
-
-
-
-
+        # print(f"上传处理出错：{e}")
+        return JSONResponse(status_code=500, content={"error": str(e)})
 
 
 # 启动 FastAPI 应用

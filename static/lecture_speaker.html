@@ -327,7 +327,7 @@ function onUploadFile(lectureId) {
     formData.append('file', file);
 
     try {
-      const res = await fetch('/upload_file', {
+      const res = await fetch('/upload_any_file', {
         method: 'POST',
         body: formData
       });

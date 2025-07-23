@@ -318,7 +318,7 @@
 
     <div id="error-message"></div>
 
-    <p>还没有账号？<a href="register.html">去注册</a></p>
+    <p>还没有账号？<a href="static/register.html">去注册</a></p>
 </div>
 
 
@@ -411,7 +411,7 @@
 
         // openModal("successModal");  // ✅ 弹出“成功”提示框
         setTimeout(() => {
-        window.location.href = `person.html?id=${encodeURIComponent(data.user.id)}`;
+        window.location.href = `static/person.html?id=${encodeURIComponent(data.user.id)}`;
     }, 100);  // 稍微延迟 1 秒跳转，让用户看到弹窗
     } else {
         // openModal("failureModal");  // ❌ 弹出“失败”提示框

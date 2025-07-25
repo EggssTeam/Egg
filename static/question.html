@@ -52,7 +52,7 @@
     <h2>请选择正确的答案</h2>
 
     <div id="questionSection">
-        <!-- 这里会由 JS 动态插入问题 -->
+        <!-- 问题将由 JS 动态插入 -->
     </div>
 
     <button type="button" onclick="submitAllAnswers()">提交所有答案</button>
@@ -71,7 +71,7 @@
         // 页面加载后获取问题数据
         window.onload = async () => {
             try {
-                const res = await fetch('/question'); // 替换成你后端对应的问题接口路径
+                const res = await fetch('/question'); // 替换成你后端对应的接口路径
                 if (!res.ok) throw new Error("加载问题失败，状态码：" + res.status);
                 const questions = await res.json();
 
@@ -117,7 +117,7 @@
             }
         };
 
-        // 提交答案并显示结果
+        // 提交所有答案并显示结果
         function submitAllAnswers() {
             const resultSection = document.getElementById("resultSection");
             const correctCountElement = document.getElementById("correctCount");
@@ -131,18 +131,25 @@
 
             questions.forEach(question => {
                 const questionId = question.id.split('_')[1];
-                const correctAnswer = question.dataset.correctAnswer;
+                const correctAnswerFull = question.dataset.correctAnswer.trim();
+                const correctOption = correctAnswerFull.charAt(0); // A/B/C/D
                 const selectedAnswer = userAnswers[questionId];
-                const isCorrect = selectedAnswer === correctAnswer;
+                const isCorrect = selectedAnswer === correctOption;
                 if (isCorrect) correctAnswersCount++;
 
                 const resultDiv = document.getElementById(`result_${questionId}`);
                 if (selectedAnswer) {
                     resultDiv.textContent = `你的答案: ${selectedAnswer} ${isCorrect ? '(正确)' : '(错误)'}`;
                     resultDiv.className = 'result ' + (isCorrect ? 'correct' : 'incorrect');
+
+                    // 如果错误，显示正确答案解释
+                    if (!isCorrect) {
+                        resultDiv.innerHTML += `<br/>正确答案是：${correctAnswerFull}`;
+                    }
                 } else {
                     resultDiv.textContent = "你没有选择答案!";
                     resultDiv.className = 'result incorrect';
+                    resultDiv.innerHTML += `<br/>正确答案是：${correctAnswerFull}`;
                 }
                 resultDiv.style.display = "block";
             });

@@ -114,8 +114,9 @@
             <!-- 新增角色选择 -->
             <el-form-item label="角色" :rules="[{ required: true, message: '请选择角色', trigger: 'change' }]">
                 <el-select v-model="form.role" placeholder="请选择角色">
-                    <el-option label="演讲者" :value="1"></el-option>
-                    <el-option label="听众" :value="2"></el-option>
+                    <el-option label="组织者" :value="1"></el-option>
+                    <el-option label="演讲者" :value="2"></el-option>
+                    <el-option label="听众" :value="3"></el-option>
                 </el-select>
             </el-form-item>
 
@@ -193,7 +194,7 @@
                     if (response.ok) {
                         this.$message.success('注册成功！');
                         setTimeout(() => {
-                            window.location.href = "login.html";
+                            window.location.href = "http://127.0.0.1:8000";
                         }, 1500);
                     } else {
                         this.showError(data.detail || "注册失败");

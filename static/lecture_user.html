@@ -72,10 +72,16 @@
 <!--        <a href="lecture_list.html">演讲</a>-->
       </nav>
       <div class="content-area">
+
+        <div style="margin-bottom: 20px;">
+          <input type="text" id="codeInput" placeholder="请输入6位lecturecode" maxlength="6" />
+          <button onclick="joinLectureByCode()">加入演讲</button>
+        </div>
+
         <div class="top-actions">
           <h2>演讲管理</h2>
           <div class="search-box"><input type="text" id="searchInput" placeholder="搜索名称" /></div>
-          <button class="new" onclick="openModal()">➕ 新建演讲</button>
+<!--          <button class="new" onclick="openModal()">➕ 新建演讲</button>-->
         </div>
 
         <div class="section" id="sec-notStarted">
@@ -294,7 +300,8 @@ function renderSection(status) {
       <h4>${targetLecture.topic}</h4>
       <div class="time">开始时间：${formattedTime}</div>
       <div class="duration">时长：${targetLecture.duration} 分钟</div>
-      <div class="desc">${targetLecture.description || ''}</div>
+      <div class="time">演讲者： ${targetLecture.speakername|| '空'}</div>
+      <div class="desc">简介：${targetLecture.description || ''}</div>
       <div class="btns">${btns}</div>`;
 
     cont.appendChild(card);
@@ -451,31 +458,33 @@ function onEnd(id) {
 }
 
 function onEnter(id) {
-  window.location.href = `http://127.0.0.1:8000/static/lecture_detail.html?id=${encodeURIComponent(id)}`;
+  window.location.href = `http://127.0.0.1:8000/static/lecture-room-audience.html?lecture_id=${encodeURIComponent(id)}`;
 }
 
 
 function onView(id) {
-  fetch(`/lecture/${id}`)
-    .then(res => {
-      if (!res.ok) throw new Error('获取演讲详情失败');
-      return res.json();
-    })
-    .then(lecture => {
-      const formatted = JSON.stringify(lecture, null, 2);
-      const newWindow = window.open("", "_blank", "width=600,height=400,scrollbars=yes");
-      newWindow.document.write(`<pre style="font-family: monospace; white-space: pre-wrap;">${formatted}</pre>`);
-      newWindow.document.title = "演讲详情";
-      newWindow.document.close();
-    })
-    .catch(err => {
-      alert(err.message || '加载失败');
-    });
+  // fetch(`/lecture/${id}`)
+  //   .then(res => {
+  //     if (!res.ok) throw new Error('获取演讲详情失败');
+  //     return res.json();
+  //   })
+  //   .then(lecture => {
+  //     const formatted = JSON.stringify(lecture, null, 2);
+  //     const newWindow = window.open("", "_blank", "width=600,height=400,scrollbars=yes");
+  //     newWindow.document.write(`<pre style="font-family: monospace; white-space: pre-wrap;">${formatted}</pre>`);
+  //     newWindow.document.title = "演讲详情";
+  //     newWindow.document.close();
+  //   })
+  //   .catch(err => {
+  //     alert(err.message || '加载失败');
+  //   });
+  window.location.href = `http://127.0.0.1:8000/static/speech_info.html?lecture_id=${encodeURIComponent(id)}`;
+
 }
 
 function logout() {
   if (confirm('确认退出登录？')) {
-    location.href = 'login.html';
+    location.href = 'http://127.0.0.1:8000';
   }
 }
 
@@ -488,44 +497,116 @@ function goToPersonal() {
   }
 }
 
+async function joinLectureByCode() {
+  const code = document.getElementById("codeInput").value.trim();
+  const userId = sessionStorage.getItem("userId");
+
+  if (!/^\d{6}$/.test(code)) {
+    alert("❌ 请输入6位数字的 lecturecode。");
+    return;
+  }
+
+  if (!userId) {
+    alert("❌ 用户未登录或未找到 userId。");
+    return;
+  }
+
+  try {
+    const resLecture = await fetch(`/lecture/by_code/${code}`);
+    if (!resLecture.ok) throw new Error("找不到对应的演讲");
+    const lecture = await resLecture.json();
+
+    const resLA = await fetch("/LA/create", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        lecture_id: lecture.id,
+        audience_id: userId
+      })
+    });
+
+    const result = await resLA.json();
+
+    if (resLA.ok) {
+      alert(`✅ 成功加入演讲！\n加入时间：${new Date(result.joined_at).toLocaleString()}`);
+      location.reload()
+    } else {
+      throw new Error(result.detail || "加入失败");
+    }
+
+  } catch (err) {
+    alert(`❌ ${err.message}`);
+  }
+}
+
 
 window.addEventListener('DOMContentLoaded', async () => {
   try {
-    // 获取用户名
     const userId = sessionStorage.getItem("userId");
-    if (userId) {
-      const res = await fetch(`/user/${encodeURIComponent(userId)}`);
-      if (res.ok) {
-        const userData = await res.json();
-        document.getElementById('greet').textContent = `你好！${userData.username || '用户'}`;
-      }
+    if (!userId) throw new Error("未登录");
+
+    // 获取当前用户信息并展示问候语
+    const resUser = await fetch(`/user/${encodeURIComponent(userId)}`);
+    if (resUser.ok) {
+      const userData = await resUser.json();
+      document.getElementById('greet').textContent = `你好！${userData.username || '用户'}`;
     }
 
-    // 获取演讲数据
-    const res = await fetch('/lecture/');
-    if (!res.ok) throw new Error("获取演讲列表失败");
-    const data = await res.json();
+    // 获取该用户加入的演讲关系（lecture_assignment）
+    const resLA = await fetch(`/LA/lectures_by_user/${userId}`);
+    if (!resLA.ok) throw new Error("获取已加入的演讲失败");
+    const laData = await resLA.json();
+    console.log(laData)
 
-    all = data.map(item => ({
-      id: item.id,
-      topic: item.topic,
-      speaker_id: item.speaker_id,
-      description: item.description,
-      status: parseInt(item.status),
-      organizer_id: item.organizer_id,
-      start_time: item.start_time,
-      duration: item.duration,
-    }));
+    // 获取每场演讲详情 + 讲者信息
+    const lectureDetails = await Promise.all(
+      laData.map(async (la) => {
+        const resLecture = await fetch(`/lecture/${la.lecture_id}`);
+        if (!resLecture.ok) throw new Error("获取演讲详情失败");
+        const item = await resLecture.json();
+
+        // 获取 speakername（如果存在 speaker_id）
+        let speakername = '';
+        if (item.speaker_id) {
+          try {
+            const userRes = await fetch(`/user/${item.speaker_id}`);
+            if (userRes.ok) {
+              const speakerData = await userRes.json();
+              speakername = speakerData.username || '';
+            }
+          } catch (e) {
+            console.warn(`获取讲者 ${item.speaker_id} 信息失败`, e);
+          }
+        }
+
+        return {
+          id: item.id,
+          topic: item.topic,
+          speaker_id: item.speaker_id,
+          speakername,  // ✅ 添加讲者名称字段
+          description: item.description,
+          status: parseInt(item.status),
+          organizer_id: item.organizer_id,
+          start_time: item.start_time,
+          duration: item.duration,
+          lecturecode: parseInt(item.lecturecode) || 0
+        };
+      })
+    );
+
+    // 存入全局变量并渲染
+    all = lectureDetails;
     filtered = [...all];
+    console.log(all)
     renderAll();
 
   } catch (err) {
-    console.error("页面初始化失败：", err);
-    alert("页面加载失败，请稍后重试！");
+    console.error("加载失败：", err);
+    alert("加载失败，请稍后重试！");
   }
 });
-
-
 
    window.addEventListener('DOMContentLoaded', async () => {
     const userId = sessionStorage.getItem("userId");
@@ -538,12 +619,12 @@ window.addEventListener('DOMContentLoaded', async () => {
       const role = data.role;
       const nav = document.getElementById('sidebarNav');
 
-      if (role === 0) {
+      if (role === 1) {
         const lectureLink = document.createElement('a');
         lectureLink.href = 'lecture_list.html';
         lectureLink.textContent = '演讲';
         nav.appendChild(lectureLink);
-      } else if (role === 1) {
+      } else if (role === 2) {
         const inviteLink = document.createElement('a');
         inviteLink.href = 'invites.html';
         inviteLink.textContent = '收到的邀请';
@@ -553,6 +634,11 @@ window.addEventListener('DOMContentLoaded', async () => {
         lectureLink.href = 'lecture_user.html';
         lectureLink.textContent = '演讲';
         nav.appendChild(lectureLink);
+
+        //  const inviteLink = document.createElement('a');
+        // inviteLink.href = 'question.html';
+        // inviteLink.textContent = '问题';
+        // nav.appendChild(inviteLink);
       }
     } catch (err) {
       console.error("加载导航失败：", err);

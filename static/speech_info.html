@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <title>演讲系统 - 演讲题目展示</title>
+  <style>
+    body {
+      font-family: "Helvetica Neue", Arial, sans-serif;
+      background-color: #f5f7fa;
+      margin: 0; padding: 0;
+      display: flex; justify-content: center;
+    }
+
+    .page-wrapper {
+      width: 960px;
+      background: white;
+      margin: 30px 0;
+      padding: 30px 40px 80px;
+      border-radius: 10px;
+      box-shadow: 0 4px 16px rgba(0,0,0,0.08);
+      position: relative;
+    }
+
+    header {
+      background: #2d3a4b;
+      color: white;
+      padding: 12px 24px;
+      display: flex;
+      justify-content: space-between;
+      border-radius: 8px 8px 0 0;
+    }
+
+    h2 { margin: 20px 0; }
+
+    .question-block {
+      margin-bottom: 30px;
+      border-bottom: 1px solid #eee;
+      padding-bottom: 20px;
+    }
+
+    .question-title {
+      font-weight: bold;
+      margin-bottom: 12px;
+      font-size: 16px;
+    }
+
+    .options-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 10px;
+    }
+
+    .option-item {
+      padding: 10px 14px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      background: #f9f9f9;
+      font-size: 14px;
+      position: relative;
+    }
+
+    .option-item.correct {
+      border-color: green;
+      background: #e7f7ea;
+    }
+
+    .option-item.incorrect {
+      border-color: red;
+      background: #fde9e9;
+    }
+
+    .option-label {
+      font-weight: bold;
+      margin-right: 8px;
+    }
+
+    .option-count {
+      position: absolute;
+      top: 8px;
+      right: 10px;
+      font-size: 12px;
+      color: #666;
+    }
+
+    .badge {
+      display: inline-block;
+      font-size: 12px;
+      padding: 2px 8px;
+      border-radius: 12px;
+      background-color: #409eff;
+      color: white;
+      margin-left: 6px;
+    }
+
+    .badge.correct {
+      background-color: green;
+    }
+
+    .badge.incorrect {
+      background-color: red;
+    }
+
+    .meta {
+      font-size: 13px;
+      color: #444;
+      margin-top: 8px;
+    }
+
+    #fixedLogoutBtn {
+      position: absolute;
+      right: 30px;
+      bottom: 20px;
+      background-color: #f56c6c;
+      border: none;
+      color: white;
+      padding: 10px 20px;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+  .feedback-tags {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-top: 10px;
+  }
+
+  .feedback-tag {
+    padding: 10px 16px;
+    border-radius: 16px;
+    font-size: 15px;
+    font-weight: 500;
+    color: #333;
+    background-color: #f4f4f4;
+    border: 1px solid #ddd;
+    box-shadow: 1px 1px 3px rgba(0, 0, 0, 0.06);
+    display: inline-flex;
+    align-items: center;
+    transition: background-color 0.2s ease;
+  }
+
+  .feedback-tag:hover {
+    background-color: #eaeaea;
+  }
+
+  .count {
+    margin-left: 8px;
+    background: #ffffffcc;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-weight: bold;
+    font-size: 14px;
+    color: #555;
+  }
+
+  .tag-fast {
+    background-color: #fdecea;
+    border-color: #f5c6c2;
+    color: #c0392b;
+  }
+
+  .tag-slow {
+    background-color: #fff9e6;
+    border-color: #ffe9a8;
+    color: #b8860b;
+  }
+
+  .tag-boring {
+    background-color: #eaf4fc;
+    border-color: #b9dcf8;
+    color: #2a6496;
+  }
+
+  .tag-bad {
+    background-color: #f3e8f9;
+    border-color: #d8bce8;
+    color: #7e57c2;
+  }
+
+
+  .comment-list {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    margin-top: 16px;
+  }
+
+  .comment-item {
+    display: flex;
+    align-items: flex-start;
+    gap: 12px;
+    background-color: #f9f9f9;
+    padding: 12px 16px;
+    border-radius: 12px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+  }
+
+  .comment-avatar {
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    object-fit: cover;
+    background-color: #ddd;
+  }
+
+  .comment-content {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .comment-username {
+    font-weight: 600;
+    color: #333;
+    margin-bottom: 4px;
+  }
+
+  .comment-text {
+    font-size: 15px;
+    color: #555;
+    line-height: 1.5em;
+  }
+
+
+  .pagination-controls {
+    justify-content: center;
+    align-items: center;
+  }
+
+  .pagination-controls button {
+    padding: 6px 14px;
+    border: 1px solid #ccc;
+    background-color: #f8f8f8;
+    color: #333;
+    border-radius: 6px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+  }
+
+  .pagination-controls button:hover:not(:disabled) {
+    background-color: #e0e0e0;
+  }
+
+  .pagination-controls button:disabled {
+    background-color: #f0f0f0;
+    color: #aaa;
+    cursor: not-allowed;
+  }
+
+
+
+  .container {
+      max-width: 600px;
+      background-color: white;
+      border-radius: 12px;
+      padding: 1.5rem;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    }
+
+    .tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem;
+      margin-bottom: 1rem;
+    }
+
+    .tag {
+      padding: 6px 12px;
+      border-radius: 999px;
+      font-size: 0.9rem;
+      font-weight: 500;
+    }
+
+    .fast     { background-color: #fdecea; color: #b71c1c; }
+    .slow     { background-color: #fff8e1; color: #f57f17; }
+    .boring   { background-color: #e3f2fd; color: #1565c0; }
+    .badq     { background-color: #f3e5f5; color: #6a1b9a; }
+
+    .comment {
+      font-size: 1rem;
+      color: #333;
+      border-top: 1px solid #eee;
+      padding-top: 1rem;
+    }
+
+    .comment span {
+      font-weight: bold;
+      color: #666;
+    }
+
+    .error {
+      color: red;
+      text-align: center;
+    }
+
+  </style>
+</head>
+<body>
+  <div class="page-wrapper">
+    <header>
+      <div>演讲系统</div>
+      <div>张三 | <button id="headerLogoutBtn" style="color:#eee; background: none; border: none; cursor: pointer;">退出登录</button></div>
+    </header>
+
+    <h2>演讲题目情况报告</h2>
+    <div id="questionContainer"></div>
+
+    <button id="fixedLogoutBtn">退出</button>
+
+    <!-- 听众反馈总结，仅组织者/讲者可见 -->
+<!--    <div id="feedbackSummaryContainer" style="margin-top: 40px; display: none;">-->
+<!--      <h2>听众反馈总结</h2>-->
+<!--      <ul id="feedbackList" style="line-height: 1.8em; font-size: 16px;">-->
+<!--        <li>讲得太快：<span id="feedbackTooFast">-</span> 人</li>-->
+<!--        <li>讲得太慢：<span id="feedbackTooSlow">-</span> 人</li>-->
+<!--        <li>演讲内容太乏味：<span id="feedbackBoring">-</span> 人</li>-->
+<!--        <li>题目质量不高：<span id="feedbackBadQuestionQuality">-</span> 人</li>-->
+<!--      </ul>-->
+<!--    </div>-->
+
+        <!-- 听众反馈总结 -->
+    <div id="feedbackSummaryContainer" style="margin-top: 40px; display: none;">
+      <h2>听众反馈总结</h2>
+      <div class="feedback-tags">
+        <div class="feedback-tag tag-fast">讲得太快 <span id="feedbackTooFast" class="count">-</span> 人</div>
+        <div class="feedback-tag tag-slow">讲得太慢 <span id="feedbackTooSlow" class="count">-</span> 人</div>
+        <div class="feedback-tag tag-boring">内容乏味 <span id="feedbackBoring" class="count">-</span> 人</div>
+        <div class="feedback-tag tag-bad">题目质量差 <span id="feedbackBadQuestionQuality" class="count">-</span> 人</div>
+      </div>
+    </div>
+
+    <!-- 听众文字反馈评论区 -->
+    <div id="feedbackCommentsContainer" style="margin-top: 40px; display: none; height: 539px">
+      <h2>听众评论反馈</h2>
+      <div id="commentList" class="comment-list"></div>
+
+        <!-- 分页按钮 -->
+      <div id="paginationControls" class="pagination-controls" style="margin-top: 16px; display: flex; gap: 10px;">
+        <button id="prevPageBtn">上一页</button>
+        <span id="pageInfo" style="line-height: 32px;"></span>
+        <button id="nextPageBtn">下一页</button>
+      </div>
+    </div>
+
+    <div class="container" id="cccc" style="display: none">
+      <h2>您的反馈</h2>
+      <div id="tags" class="tags"></div>
+      <div id="comment" class="comment"></div>
+      <div id="error" class="error"></div>
+    </div>
+
+  </div>
+
+  <script>
+    const userId = sessionStorage.getItem("userId")
+    const role = sessionStorage.getItem("role")
+    const params = new URLSearchParams(window.location.search);
+    const lectureId = params.get("lecture_id");
+    // const userId = "687ca23477604df20551e1bc";
+    // const lectureId = "6873c512266e91206c2a356d";
+    // const role = 3
+
+
+    async function fetchUserAnswers() {
+      console.log(role, role === '1')
+      try {
+        const res = await fetch(`/QA/user_answers?lecture_id=${lectureId}&user_id=${userId}`);
+        if (!res.ok) {
+          throw new Error("请求失败：" + res.status);
+        }
+
+        const data = await res.json();
+        console.log("用户答题情况：", data.answers);
+
+        return data.answers;
+      } catch (error) {
+        console.error("获取用户答题信息失败：", error);
+        return [];
+      }
+    }
+
+    async function fetchQuestionReport() {
+      try {
+        const res = await fetch(`/QA/lecture/${lectureId}/question_report`);
+        if (!res.ok) {
+          throw new Error("请求失败：" + res.status);
+        }
+
+        const data = await res.json();
+        console.log("题目报告数据：", data.question_report);
+
+        return data.question_report;
+      } catch (err) {
+        console.error("获取题目报告失败：", err);
+      }
+    }
+
+    async function renderQuestions() {
+      const container = document.getElementById('questionContainer');
+      // console.log(questions)
+
+      const questions = await fetchQuestionReport()
+      // console.log(questions)
+      const userAnswerArray = await fetchUserAnswers()
+      const userAnswers = userAnswerArray.reduce((acc, cur) => {
+        return { ...acc, ...cur };
+      }, {});
+      // console.log(userAnswers)
+
+      questions.forEach((q, idx) => {
+        const block = document.createElement('div');
+        block.className = 'question-block';
+
+        let html = `<div class="question-title">题目${idx + 1}：${q.question}</div>`;
+        html += `<div class="options-grid">`;
+
+        Object.entries(q.options).forEach(([key, value]) => {
+          const isCorrect = key === q.correct_answer;
+
+          const isUserPick = userAnswers[q.question_id] === key;
+          let classes = 'option-item';
+
+          if (role === '3') {
+            if (isUserPick && isCorrect) classes += ' correct';
+            else if (isUserPick && !isCorrect) classes += ' incorrect';
+          } else {
+            if (isCorrect) classes += ' correct';
+          }
+
+          html += `<div class="${classes}">
+            <span class="option-label">${key}.</span>${value}`;
+
+          if (role === '1' || role === '2') {
+            html += `<span class="option-count">${q.option_counts[key] || 0}人</span>`;
+          }
+
+          if (role === '3' && isUserPick) {
+            html += `<span class="badge ${isCorrect ? 'correct' : 'incorrect'}">${isCorrect ? '正确' : '错误'}</span>`;
+          }
+
+          html += `</div>`;
+        });
+
+        html += `</div>`;
+
+        if (role === '1' || role === '2') {
+          html += `<div class="meta">正确答案：<b>${q.correct_answer}</b>，正确率：${Math.round(q.accuracy * 100)}%</div>`;
+        } else if (role === '3') {
+          html += `<!--<div class="meta">正确答案：<b>${q.correct_answer}</b>，你选择了：<b>${userAnswers[q.question]}</b></div>-->`;
+          html += `<div class="meta">
+            正确答案：<b>${q.correct_answer}</b>，${
+              userAnswers[q.question_id] != null
+                ? `你选择了：<b>${userAnswers[q.question_id]}</b>`
+                : `这道题目您没有作答`
+            }
+          </div>`;
+        }
+
+        block.innerHTML = html;
+        container.appendChild(block);
+      });
+    }
+
+    async function fetchFeedbackSummary() {
+      try {
+        const res = await fetch(`/feedback/lecture/${lectureId}/feedback_summary`);
+        if (!res.ok) throw new Error("请求失败：" + res.status);
+        const data = await res.json();
+        console.log("反馈统计数据：", data.feedback_summary);
+        return data.feedback_summary;
+      } catch (err) {
+        console.error("获取反馈统计失败：", err);
+        return null;
+      }
+    }
+
+    async function renderFeedbackSummary() {
+      const container = document.getElementById("feedbackSummaryContainer");
+      if (role === '1' || role === '2') {
+        const stats = await fetchFeedbackSummary();
+        if (!stats) return;
+
+        container.style.display = 'block'; // 显示反馈区
+
+        document.getElementById("feedbackTooFast").textContent = stats.too_fast ?? 0;
+        document.getElementById("feedbackTooSlow").textContent = stats.too_slow ?? 0;
+        document.getElementById("feedbackBoring").textContent = stats.boring ?? 0;
+        document.getElementById("feedbackBadQuestionQuality").textContent = stats.bad_question_quality ?? 0;
+      }
+    }
+
+    let allComments = []; // 全部评论
+    let currentPage = 1;
+    const pageSize = 5;
+
+    async function fetchFeedbackComments() {
+      try {
+        const res = await fetch(`/feedback/lecture/${lectureId}/feedback_details`);
+        if (!res.ok) throw new Error("请求失败：" + res.status);
+        const data = await res.json();
+        return data.feedback_comments || [];
+      } catch (err) {
+        console.error("获取评论失败：", err);
+        return [];
+      }
+    }
+
+    function renderCommentPage(page) {
+      const list = document.getElementById("commentList");
+      list.innerHTML = ""; // 清空
+
+      const start = (page - 1) * pageSize;
+      const end = start + pageSize;
+      const pageComments = allComments.slice(start, end);
+
+      pageComments.forEach(c => {
+        const item = document.createElement("div");
+        item.className = "comment-item";
+
+        const avatarSrc = c.avatar || "https://via.placeholder.com/40";
+
+        item.innerHTML = `
+          <img src="${avatarSrc}" class="comment-avatar" alt="头像">
+          <div class="comment-content">
+            <div class="comment-username">${c.username}</div>
+            <div class="comment-text">${c.comment}</div>
+          </div>
+        `;
+
+        list.appendChild(item);
+      });
+
+      // 更新分页按钮状态
+      const totalPages = Math.ceil(allComments.length / pageSize);
+      document.getElementById("prevPageBtn").disabled = page <= 1;
+      document.getElementById("nextPageBtn").disabled = page >= totalPages;
+      document.getElementById("pageInfo").textContent = `第 ${page} / ${totalPages} 页`;
+    }
+
+    async function renderFeedbackComments() {
+      const container = document.getElementById("feedbackCommentsContainer");
+      allComments = await fetchFeedbackComments();
+      if (!allComments.length) return;
+
+      container.style.display = "block";
+      currentPage = 1;
+      renderCommentPage(currentPage);
+
+      document.getElementById("prevPageBtn").onclick = () => {
+        if (currentPage > 1) {
+          currentPage--;
+          renderCommentPage(currentPage);
+        }
+      };
+
+      document.getElementById("nextPageBtn").onclick = () => {
+        const totalPages = Math.ceil(allComments.length / pageSize);
+        if (currentPage < totalPages) {
+          currentPage++;
+          renderCommentPage(currentPage);
+        }
+      };
+    }
+
+    const tagMap = {
+      too_fast: { label: "讲得太快", class: "fast" },
+      too_slow: { label: "讲得太慢", class: "slow" },
+      boring: { label: "内容无聊", class: "boring" },
+      bad_question_quality: { label: "提问质量差", class: "badq" }
+    }
+
+    async function fetchFeedback() {
+      try {
+        const container = document.getElementById("cccc");
+        container.style.display = "block";
+
+        const res = await fetch(`/feedback/lecture/${lectureId}/user/${userId}/feedback`)
+        if (!res.ok) {
+          throw new Error("未找到反馈数据")
+        }
+        const data = await res.json()
+
+        const tagContainer = document.getElementById("tags")
+        const commentContainer = document.getElementById("comment")
+        const errorDiv = document.getElementById("error")
+
+        // 清空旧数据
+        tagContainer.innerHTML = ""
+        commentContainer.innerHTML = ""
+        errorDiv.textContent = ""
+
+        for (const key in tagMap) {
+          if (data[key]) {
+            const tag = document.createElement("div")
+            tag.className = `tag ${tagMap[key].class}`
+            tag.textContent = tagMap[key].label
+            tagContainer.appendChild(tag)
+          }
+        }
+
+        if (data.other && data.other.trim() !== "") {
+          commentContainer.innerHTML = `<span>其他：</span>${data.other}`
+        }
+
+      } catch (err) {
+        document.getElementById("error").textContent = err.message || "加载失败"
+      }
+    }
+
+
+    window.onload = () => {
+      renderQuestions();
+
+      if (role === '1' || role === '2') {
+        renderFeedbackSummary();
+
+        renderFeedbackComments();
+      }
+      else if (role === '3') {
+        fetchFeedback()
+      }
+      document.getElementById('fixedLogoutBtn').onclick = () => {
+        if (role === '1') location.href = 'http://127.0.0.1:8000/static/lecture_list.html';
+        else if (role === '2') location.href = 'http://127.0.0.1:8000/static/lecture_speaker.html';
+        else if (role === '3') location.href = 'http://127.0.0.1:8000/static/lecture_user.html';
+        else location.href = 'login.html';
+      };
+
+      document.getElementById('headerLogoutBtn').onclick = () => {
+        location.href = 'http://127.0.0.1:8000';
+      };
+    };
+  </script>
+</body>
+</html>

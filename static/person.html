@@ -319,7 +319,7 @@ nav.sidebar {
 
     function logout() {
       if (confirm('确认退出登录？')) {
-        location.href = 'login.html';
+        location.href = 'http://127.0.0.1:8000';
       }
     }
 
@@ -440,12 +440,12 @@ nav.sidebar {
         const role = data.role;
         const nav = document.getElementById('sidebarNav');
 
-        if (role === 0) {
+        if (role === 1) {
           const lectureLink = document.createElement('a');
           lectureLink.href = 'lecture_list.html';
           lectureLink.textContent = '演讲';
           nav.appendChild(lectureLink);
-        } else if (role === 1) {
+        } else if (role === 2) {
           const inviteLink = document.createElement('a');
           inviteLink.href = 'invites.html';
           inviteLink.textContent = '收到的邀请';

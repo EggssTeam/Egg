@@ -1,0 +1,833 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8" />
+  <title>演讲室</title>
+  <style>
+    body {
+      font-family: sans-serif;
+      margin: 0;
+      padding: 0 20px 0;
+      background: #f5f5f5;
+      display: flex;
+      flex-direction: column;
+      /*min-height: 100vh;*/
+      /*height: 100vh;*/
+    }
+    html, body {
+      height: 100vh;
+      /*margin: 0;*/
+      /*padding: 0;*/
+      overflow: hidden; /* 彻底禁用滚动条（可选） */
+    }
+
+    .carousel-container {
+      overflow: hidden;
+      position: relative;
+      /*flex: 1;*/
+      /*height: 695px;*/
+      flex: 0 0 630px;
+      padding-top: 10px;
+    }
+
+    .carousel-track {
+      display: flex;
+      transition: transform 0.5s ease-in-out;
+    }
+
+    .page {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      grid-template-rows: repeat(2, 300px);
+      gap: 20px;
+      min-width: 100%;
+    }
+
+    .card {
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.1);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      transition: transform 0.2s;
+    }
+
+    .card:hover {
+      transform: scale(1.05);
+    }
+
+    .avatar {
+      width: 60px;
+      height: 60px;
+      border-radius: 50%;
+      object-fit: cover;
+      margin-bottom: 8px;
+    }
+
+    .nav-section {
+      text-align: center;
+      margin-top: 0;
+    }
+
+    .nav-buttons button {
+      background: #6b7280;
+      color: white;
+      border: none;
+      padding: 8px 16px;
+      margin: 0 10px;
+      border-radius: 8px;
+      cursor: pointer;
+    }
+
+    .nav-buttons button:hover {
+      background: #4b5563;
+    }
+
+    .page-indicator {
+      margin: 10px 0;
+      font-size: 14px;
+      color: #374151;
+    }
+
+    .dots {
+      display: flex;
+      justify-content: center;
+      gap: 6px;
+    }
+
+    .dot {
+      width: 10px;
+      height: 10px;
+      background: #d1d5db;
+      border-radius: 50%;
+      transition: background 0.3s, transform 0.3s;
+    }
+
+    .dot.active {
+      background: #3b82f6;
+      transform: scale(1.4);
+    }
+
+    .buttons {
+      margin-top: 20px;
+      text-align: center;
+    }
+
+    .buttons button {
+      padding: 10px 20px;
+      margin: 0 10px;
+      border: none;
+      border-radius: 20px;
+      color: white;
+      font-size: 14px;
+      cursor: pointer;
+      transition: background 0.3s;
+    }
+
+    .discussion-btn {
+      background: #3b82f6;
+    }
+    .discussion-btn:hover {
+      background: #2563eb;
+    }
+    .feedback-btn {
+      background: #10b981;
+    }
+    .feedback-btn:hover {
+      background: #059669;
+    }
+
+    .arrow-btn {
+      position: absolute;
+      top: 50%;
+      transform: translateY(-50%);
+      background: rgba(107,114,128,0.8); /* 灰色半透明 */
+      color: white;
+      border: none;
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: background 0.3s;
+    }
+
+    .arrow-btn:hover {
+      background: rgba(75,85,99,0.9);
+    }
+
+    .arrow-left {
+      left: 10px;
+    }
+
+    .arrow-right {
+      right: 10px;
+    }
+
+    .arrow-btn svg {
+      width: 20px;
+      height: 20px;
+      fill: none;
+      stroke: white;
+      stroke-width: 2;
+    }
+
+    /* =================== 下面是讨论 ======================= */
+
+    /* .buttons {*/
+    /*  margin-top: 20px;*/
+    /*  text-align: center;*/
+    /*}*/
+
+    /*.buttons button {*/
+    /*  padding: 10px 20px;*/
+    /*  margin: 0 10px;*/
+    /*  border: none;*/
+    /*  border-radius: 20px;*/
+    /*  color: white;*/
+    /*  font-size: 14px;*/
+    /*  cursor: pointer;*/
+    /*  transition: background 0.3s;*/
+    /*}*/
+
+    .discussion-btn {
+      background: #3b82f6;
+    }
+    .discussion-btn:hover {
+      background: #2563eb;
+    }
+
+    /* ==== 讨论弹窗 ==== */
+    .discussion-modal {
+      position: fixed;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 500px;
+      height: 600px;
+      background: white;
+      border-radius: 12px;
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+      display: flex;
+      flex-direction: column;
+      z-index: 999;
+    }
+
+    .discussion-header {
+      padding: 10px;
+      border-bottom: 1px solid #ddd;
+      font-weight: bold;
+      font-size: 20px;
+    }
+
+    .discussion-messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 10px;
+    }
+
+    .message {
+      display: flex;
+      margin-bottom: 10px;
+    }
+    .message img {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      object-fit: cover;
+    }
+    .bubble {
+      max-width: 70%;
+      background: #e5e7eb;
+      padding: 8px 12px;
+      border-radius: 12px;
+      margin-left: 8px;
+      position: relative;
+    }
+    .bubble .username {
+      font-size: 12px;
+      color: #374151;
+      margin-bottom: 4px;
+    }
+
+    /* 自己的消息 */
+    .message.self {
+      flex-direction: row-reverse;
+    }
+    .message.self .bubble {
+      background: #3b82f6;
+      color: white;
+      margin-left: 0;
+      margin-right: 8px;
+    }
+
+    .discussion-input {
+      display: flex;
+      border-top: 1px solid #ddd;
+    }
+    .discussion-input input {
+      flex: 1;
+      border: none;
+      padding: 10px;
+      font-size: 14px;
+      outline: none;
+    }
+    .discussion-input button {
+      border: none;
+      background: #3b82f6;
+      color: white;
+      padding: 10px 20px;
+      cursor: pointer;
+      font-size: 14px;
+      border-radius: 0 0 12px 0;
+    }
+    .discussion-input button:hover {
+      background: #2563eb;
+    }
+
+    /* 遮罩 */
+    .overlay {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      background: rgba(0,0,0,0.5);
+      z-index: 998;
+    }
+
+    .hidden { display: none; }
+
+    /* =================== 下面是退出 ======================= */
+
+    .exit-btn {
+      position: fixed;
+      bottom: 20px;
+      right: 20px;
+      background-color: #e74c3c; /* 红色 */
+      color: white;
+      border: none;
+      border-radius: 8px;
+      padding: 10px 16px;
+      font-size: 16px;
+      cursor: pointer;
+      /*z-index: 9999;*/
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+      transition: background-color 0.3s;
+    }
+
+    .exit-btn:hover {
+      background-color: #c0392b;
+    }
+
+    /* =================== 下面是顶端消息 ======================= */
+
+    .top-message {
+      position: fixed;
+      top: 20px;
+      left: 50%;
+      transform: translateX(-50%);
+      color: white;
+      padding: 10px 20px;
+      border-radius: 6px;
+      font-size: 16px;
+      z-index: 9999;
+      opacity: 1;
+      transition: opacity 0.8s ease;
+    }
+
+    .top-message.hidden {
+      display: none;
+    }
+
+    .top-message.fade-out {
+      opacity: 0;
+    }
+
+    /* ✅ 类型颜色样式 */
+    .top-message.success {
+      background-color: #52c41a; /* 绿色 */
+    }
+
+    .top-message.error {
+      background-color: #ff4d4f; /* 红色 */
+    }
+
+    .top-message.warning {
+      background-color: #faad14; /* 橙色 */
+    }
+
+    .top-message.info {
+      background-color: #1890ff; /* 蓝色 */
+    }
+
+  </style>
+</head>
+<body>
+<!-- 放在<body>的开始或任意位置 -->
+<div id="topMessage" class="top-message hidden"></div>
+
+<div class="carousel-container">
+  <div class="carousel-track" id="carouselTrack">
+    <!-- 页面会通过JS生成 -->
+  </div>
+</div>
+
+<div class="nav-section">
+  <div class="page-indicator" id="pageIndicator"></div>
+  <div class="dots" id="dotsContainer"></div>
+</div>
+
+<button class="arrow-btn arrow-left" onclick="prevPage()">
+  <svg viewBox="0 0 24 24">
+    <polyline points="15 18 9 12 15 6" />
+  </svg>
+</button>
+<button class="arrow-btn arrow-right" onclick="nextPage()">
+  <svg viewBox="0 0 24 24">
+    <polyline points="9 6 15 12 9 18" />
+  </svg>
+</button>
+
+
+<div class="buttons">
+  <button class="discussion-btn" onclick="openDiscussion()">讨论区</button>
+</div>
+
+<!-- ============================== 右下角退出按钮 ============================== -->
+<button class="exit-btn" onclick="exitLecture()">退出演讲</button>
+
+<!--============================== 下面是讨论区 ===============================-->
+
+<!-- 遮罩和弹窗 -->
+<div class="overlay hidden" id="overlay" onclick="closeDiscussion()"></div>
+<div class="discussion-modal hidden" id="discussionModal">
+  <div class="discussion-header">讨论区</div>
+  <div class="discussion-messages" id="discussionMessages">
+    <!-- 消息会通过JS生成 -->
+  </div>
+  <div class="discussion-input">
+    <input type="text" id="messageInput" placeholder="说点什么...">
+    <button onclick="sendMessage()">发送</button>
+  </div>
+</div>
+
+<script>
+  function getUserAndLecture() {
+    const userId = sessionStorage.getItem("userId");
+    const params = new URLSearchParams(window.location.search);
+    const lectureId = params.get("lecture_id");
+
+    if (!userId || !lectureId) {
+      showTopMessage("请先登录并进入正确的演讲页！", "error");
+      // window.location.href = "http://127.0.0.1:8000/static/lecture_list.html";
+    }
+
+    addAudienceToLecture(lectureId, userId, true);
+
+    return { userId, lectureId };
+  }
+
+  async function addAudienceToLecture(lectureId, audienceId, isPresent = true) {
+     const payload = {
+    lecture_id: lectureId,
+    audience_id: audienceId,
+    is_present: isPresent,
+    // joined_at 可选：可传也可不传
+    // joined_at: new Date().toISOString()
+  };
+
+  try {
+    const res = await fetch("/LA/add", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(payload)
+    });
+
+    const data = await res.json();
+    if (res.ok) {
+      console.log("加入成功：", data);
+    } else {
+      console.error("加入失败：", data);
+      alert("加入失败：" + data.detail || "服务器错误");
+    }
+  } catch (error) {
+    console.error("网络请求出错：", error);
+    alert("请求出错");
+  }
+  }
+
+  const { userId, lectureId } = getUserAndLecture();
+  // const userId = "687ca23477604df20551e1bc";
+  // const lectureId = "6873c512266e91206c2a356d";
+
+  // 轮询每隔两秒拉取消息
+  function startPollingDiscussions() {
+    setInterval(() => {
+      fetchDiscussions();
+    }, 2000); // 每 2 秒轮询
+  }
+
+  function startFetchUsers() {
+    setInterval(() => {
+      updateLectureRoom();
+    }, 2000); // 每 2 秒轮询
+  }
+
+  window.onload = function () {
+    startPollingDiscussions(); // 启动轮询
+    startFetchUsers();
+  };
+
+  // window.onload = function() {
+  //   const { userId, lectureId } = getUserAndLecture();
+  //   fetchDiscussions(lectureId);
+  // };
+
+  async function fetchUsers() {
+    try {
+      const response = await fetch(`/LA/present?lecture_id=${lectureId}`, {
+        method: "GET"
+      });
+
+      if (!response.ok) {
+        throw new Error("获取数据失败");
+      }
+
+      const result = await response.json();
+      console.log("出席听众记录：", result.users);
+      // await initLectureRoom();
+      return result.users;
+    } catch (err) {
+      console.error("出错了：", err);
+      return [];
+    }
+  }
+
+  const usersPerPage = 6;
+  let currentPage = 0;
+
+  async function initLectureRoom() {
+    const users = await fetchUsers();
+
+    const track = document.getElementById('carouselTrack');
+    const pageIndicator = document.getElementById('pageIndicator');
+    const dotsContainer = document.getElementById('dotsContainer');
+
+    const pages = [];
+    for (let i = 0; i < users.length; i += usersPerPage) {
+        pages.push(users.slice(i, i + usersPerPage));
+    }
+
+    // 渲染页面
+    pages.forEach(pageUsers => {
+        const pageDiv = document.createElement('div');
+        pageDiv.className = 'page';
+        pageUsers.forEach(user => {
+            const card = document.createElement('div');
+            card.className = 'card';
+            card.innerHTML = `
+                <img class="avatar" src="${user.avatar}" alt="${user.username}">
+                <div>${user.username}</div>
+            `;
+            pageDiv.appendChild(card);
+        });
+        track.appendChild(pageDiv);
+    });
+
+    // 渲染圆点
+    pages.forEach((_, index) => {
+        const dot = document.createElement('div');
+        dot.className = 'dot';
+        if (index === 0) dot.classList.add('active');
+        dotsContainer.appendChild(dot);
+    });
+
+    function updateCarousel() {
+        track.style.transform = `translateX(-${currentPage * 100}%)`;
+        pageIndicator.textContent = `第${currentPage + 1}页 / 共${pages.length}页`;
+        document.querySelectorAll('.dot').forEach((dot, idx) => {
+            dot.classList.toggle('active', idx === currentPage);
+        });
+    }
+
+    window.prevPage = function() {
+        if (currentPage > 0) {
+            currentPage--;
+            updateCarousel();
+        }
+    };
+
+    window.nextPage = function() {
+        if (currentPage < pages.length - 1) {
+            currentPage++;
+            updateCarousel();
+        }
+    };
+
+    updateCarousel();
+  }
+
+  // 页面加载就运行
+  initLectureRoom();
+
+  async function updateLectureRoom() {
+    let users = await fetchUsers();
+
+    const track = document.getElementById('carouselTrack');
+    const pageIndicator = document.getElementById('pageIndicator');
+    const dotsContainer = document.getElementById('dotsContainer');
+
+     // 清空旧内容
+    track.innerHTML = "";
+    dotsContainer.innerHTML = "";
+
+    const pages = [];
+    for (let i = 0; i < users.length; i += usersPerPage) {
+        pages.push(users.slice(i, i + usersPerPage));
+    }
+
+    // 渲染页面
+    pages.forEach(pageUsers => {
+        const pageDiv = document.createElement('div');
+        pageDiv.className = 'page';
+        pageUsers.forEach(user => {
+            const card = document.createElement('div');
+            card.className = 'card';
+            card.innerHTML = `
+                <img class="avatar" src="${user.avatar}" alt="${user.username}">
+                <div>${user.username}</div>
+            `;
+            pageDiv.appendChild(card);
+        });
+        track.appendChild(pageDiv);
+    });
+
+    // 渲染圆点
+    pages.forEach((_, index) => {
+        const dot = document.createElement('div');
+        dot.className = 'dot';
+        if (index === 0) dot.classList.add('active');
+        dotsContainer.appendChild(dot);
+    });
+
+    function updateCarousel() {
+        track.style.transform = `translateX(-${currentPage * 100}%)`;
+        pageIndicator.textContent = `第${currentPage + 1}页 / 共${pages.length}页`;
+        document.querySelectorAll('.dot').forEach((dot, idx) => {
+            dot.classList.toggle('active', idx === currentPage);
+        });
+    }
+
+    window.prevPage = function() {
+        if (currentPage > 0) {
+            currentPage--;
+            updateCarousel();
+        }
+    };
+
+    window.nextPage = function() {
+        if (currentPage < pages.length - 1) {
+            currentPage++;
+            updateCarousel();
+        }
+    };
+
+    updateCarousel();
+  }
+
+  // ============================== 下面是讨论区 ===============================
+
+  function renderDiscussionMessages(messages) {
+    const container = document.getElementById("discussionMessages");
+    container.innerHTML = "";
+
+    messages.forEach(msg => {
+      const isSelf = msg.user_id === userId;
+
+      const div = document.createElement("div");
+      div.className = "message" + (isSelf ? " self" : "");
+      div.innerHTML = `
+        <img src="${msg.avatar}" alt="${msg.username}">
+        <div class="bubble">
+          <div class="username">${isSelf ? "我" : msg.username}</div>
+          <div>${msg.content}</div>
+        </div>
+      `;
+      container.appendChild(div);
+    });
+
+    container.scrollTop = container.scrollHeight; // 滚动到底
+  }
+
+  function updateDiscussionMessages(messages) {
+    const container = document.getElementById("discussionMessages");
+    container.innerHTML = "";
+
+    messages.forEach(msg => {
+      const isSelf = msg.user_id === userId;
+
+      const div = document.createElement("div");
+      div.className = "message" + (isSelf ? " self" : "");
+      div.innerHTML = `
+        <img src="${msg.avatar}" alt="${msg.username}">
+        <div class="bubble">
+          <div class="username">${isSelf ? "我" : msg.username}</div>
+          <div>${msg.content}</div>
+        </div>
+      `;
+      container.appendChild(div);
+    });
+  }
+
+  async function fetchDiscussions() {
+    try {
+      const res = await fetch(`/discussion/lecture/${lectureId}`);
+      if (!res.ok) {
+        throw new Error("请求失败！");
+      }
+      const discussions = await res.json();
+
+      console.log("讨论内容：", discussions);
+
+      // renderDiscussionMessages(discussions);
+      updateDiscussionMessages(discussions);
+    } catch (err) {
+      console.error("获取讨论失败：", err);
+      // alert("无法获取讨论内容");
+    }
+  }
+
+  async function openDiscussions() {
+    try {
+      const res = await fetch(`/discussion/lecture/${lectureId}`);
+      if (!res.ok) {
+        throw new Error("请求失败！");
+      }
+      const discussions = await res.json();
+
+      // console.log("讨论内容：", discussions);
+
+      renderDiscussionMessages(discussions);
+      // updateDiscussionMessages(discussions);
+    } catch (err) {
+      console.error("获取讨论失败：", err);
+      // alert("无法获取讨论内容");
+    }
+  }
+
+  function openDiscussion() {
+    document.getElementById('overlay').classList.remove('hidden');
+    document.getElementById('discussionModal').classList.remove('hidden');
+    // renderMessages(); // 前端固定值
+
+    openDiscussions(lectureId);
+  }
+
+  function closeDiscussion() {
+    document.getElementById('overlay').classList.add('hidden');
+    document.getElementById('discussionModal').classList.add('hidden');
+  }
+
+  async function sendMessage() {
+    const content = document.getElementById("messageInput").value.trim();
+    if (!content) return;
+
+    const messageData = {
+      user_id: userId,
+      lecture_id: lectureId,
+      content: content,
+      created_at: new Date().toISOString()
+    };
+
+    try {
+      const res = await fetch("/discussion/add", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(messageData)
+      });
+
+      if (!res.ok) throw new Error("发送失败");
+
+      // 清空输入框
+      document.getElementById("messageInput").value = "";
+
+      // 刷新讨论区（或追加新消息）
+      await fetchDiscussions(lectureId); // 或 appendMessage()
+    } catch (err) {
+      console.error("发送失败", err);
+      alert("发送失败，请稍后再试");
+    }
+  }
+
+  // 绑定回车快捷发送
+  document.getElementById('messageInput').addEventListener('keydown', function(e) {
+    if (e.key === 'Enter') {
+      e.preventDefault(); // 防止换行
+      sendMessage();
+    }
+  });
+
+  // ============================== 下面是退出 ===============================
+
+  async function exitLecture() {
+    if (confirm("确定要退出当前演讲吗？")) {
+      // 可根据你项目跳转主页或登录页
+      try {
+        const res = await fetch(`/LA/update_is_present?lecture_id=${lectureId}&audience_id=${userId}&is_present=${false}`, {
+          method: "PATCH"
+        });
+
+        const data = await res.json();
+
+        if (res.ok) {
+          console.log("更新成功：", data.message);
+        } else {
+          console.error("更新失败：", data.detail || "未知错误");
+          alert("更新失败：" + data.detail);
+        }
+      } catch (err) {
+        console.error("请求出错：", err);
+        alert("网络错误");
+      }
+      window.location.href = "http://127.0.0.1:8000/static/lecture_list.html"; // 或其他你想跳转的页面
+    }
+  }
+
+  // ============================== 下面是顶端消息 ===============================
+
+  // type: "success"， "error"， "warning"， "info"
+  function showTopMessage(messageText, type = "info") {
+    const msgDiv = document.getElementById("topMessage");
+    msgDiv.textContent = messageText;
+
+    // 移除旧的样式
+    msgDiv.className = "top-message";
+
+    // 添加新类型的样式
+    msgDiv.classList.add(type);
+
+    // 显示消息
+    msgDiv.classList.remove("hidden", "fade-out");
+
+    // 1秒后开始淡出
+    setTimeout(() => {
+      msgDiv.classList.add("fade-out");
+    }, 1000);
+
+    // 1.8秒后隐藏
+    setTimeout(() => {
+      msgDiv.classList.add("hidden");
+      msgDiv.classList.remove("fade-out");
+    }, 1800);
+  }
+
+</script>
+</body>
+</html>

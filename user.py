@@ -68,6 +68,8 @@ async def register(user: UserCreate):
         "password": hashed_password,
         "role": user.role,
         # 其余字段默认不填，待后续补充
+        "avatar": "/static/uploads/ad08e97b84354e6b9720e877072f28c4.png",
+        "background": "/static/uploads/aa486fc11bd94ab3bd9ef02baa48e357.jpg",
     }
 
     user_collection.insert_one(user_doc)
@@ -94,9 +96,10 @@ async def login(user: UserLogin):
             # "_id": db_user["_id"],
             "email": db_user["email"],
             "username": db_user.get("username", ""),
+            "role": db_user["role"],
             # 如果你需要头像和背景也加上
-            "avatar": db_user.get("avatar", ""),
-            "background": db_user.get("background", "")
+            # "avatar": db_user.get("avatar", ""),
+            # "background": db_user.get("background", "")
         }
     }
 

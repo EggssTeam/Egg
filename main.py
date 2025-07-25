@@ -9,6 +9,7 @@ from datetime import datetime
 # 第三方库
 import uvicorn
 import requests
+from bson import ObjectId
 from fastapi import FastAPI, UploadFile, File, Form
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -30,10 +31,7 @@ from ai_client import (
 from invitation import invitation_router
 from lecture import lecture_router
 from user import user_router
-from question import question_router
-
-
-
+from question import router as question_router
 
 app = FastAPI()
 app.include_router(invitation_router, prefix="/invitation", tags=["invitation"])
@@ -41,7 +39,24 @@ app.include_router(question_router, prefix="/question", tags=["Question"])
 app.include_router(user_router, prefix="/user", tags=["User"])
 app.include_router(lecture_router, prefix="/lecture", tags=["Lecture"])
 
+from discussion import router as discussion_router
+app.include_router(discussion_router, prefix="/discussion", tags=["Discussion"])
+
+from fetch_question import router as fq_router
+app.include_router(fq_router, prefix="/fetch_question", tags=["fetch_question"])
+
+from LA import router as la_router
+app.include_router(la_router, prefix="/LA", tags=["LA"])
+
+from QA import router as qa_router
+app.include_router(qa_router, prefix="/QA", tags=["QA"])
+
+from feedback import router as feedback_router
+app.include_router(feedback_router, prefix="/feedback", tags=["Feedback"])
+
 app.mount("/static", StaticFiles(directory="static", html=True), name="static")
+
+
 @app.get("/", response_class=FileResponse)
 async def serve_login_page():
     return FileResponse("static/login.html")
@@ -69,7 +84,7 @@ async def upload_any_file(file: UploadFile = File(...), lecture_id: str = Form(N
             images = extract_images_from_pdf(file_stream)
 
             if images:
-                selected_images = random.sample(images, min(3, len(images)))
+                selected_images = random.sample(images, min(5, len(images)))
                 image_analysis_text = analyze_images_with_o4(selected_images)
                 image_questions = generate_questions(image_analysis_text)
 
@@ -88,7 +103,7 @@ async def upload_any_file(file: UploadFile = File(...), lecture_id: str = Form(N
 
             images = extract_images_from_pptx(io.BytesIO(content))
             if images:
-                selected_images = random.sample(images, min(3, len(images)))
+                selected_images = random.sample(images, min(5, len(images)))
                 image_analysis_text = analyze_images_with_o4(selected_images)
                 image_questions = generate_questions(image_analysis_text)
 
@@ -153,11 +168,12 @@ async def upload_any_file(file: UploadFile = File(...), lecture_id: str = Form(N
                 "文本 + DeepSeek"
             )
             docs.append({
-                "lecture_id": lecture_id,
+                "lecture_id": ObjectId(lecture_id),
                 "filename": file.filename,
                 "question": q["question"],
                 "options": q["options"],
                 "correct_answer": q["correct_answer"],
+                "is_send": False,
                 "source": source,
                 "created_at": datetime.now()
             })

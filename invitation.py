@@ -3,6 +3,7 @@ from bson import ObjectId
 from typing import Optional
 from fastapi import APIRouter, HTTPException
 from db import db, invitation_collection, lecture_collection  # 假设你有一个db.py文件，其中定义了数据库连接
+from datetime import datetime
 
 
 from fastapi import Query
@@ -192,6 +193,14 @@ async def accept_invitation(invitation_id: str):
         {"_id": invite["lecture_id"]},
         {"$set": {"speaker_id": invite["speaker_id"]}}
     )
+
+    # # 加入LA中
+    # db["LA"].insert_one({
+    #     "lecture_id": invite["lecture_id"],
+    #     "audience_id": invite["speaker_id"],
+    #     "is_present": False,
+    #     "joined_at": datetime.utcnow()
+    # })
 
     return InvitationResponse(
         id=str(invite["_id"]),
